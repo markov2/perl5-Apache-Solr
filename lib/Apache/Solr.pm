@@ -52,7 +52,7 @@ by sending bugs and suggesting improvements.
 
 =c_method new OPTIONS
 
-=required server URL
+=requires server URL
 The locations of the Solr server depends on the way the java environment
 is set-up.   The URL is either an M<URI> object or a string which can be
 instantiated as such.
@@ -75,7 +75,7 @@ Agent which implements the communication between this client and the
 Solr server.  When you have multiple C<Apache::Solr> objects in your
 program, you may want to share this agent, to share the connection.
 
-Do not forget to install M<LWP::protocol::https> if you need to connect
+Do not forget to install M<LWP::Protocol::https> if you need to connect
 via https.
 
 =option  autocommit BOOLEAN

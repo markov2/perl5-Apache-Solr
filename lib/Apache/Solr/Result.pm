@@ -207,7 +207,7 @@ selected answers.
 sub selected($;$)
 {   my ($self, $rank, $client) = @_;
     my $dec    = $self->decoded;
-warn Dumper $dec;
+#warn Dumper $dec;
     my $result = $dec->{result}
         or panic "there are no results (yet)";
 

@@ -187,7 +187,7 @@ sub request($$;$)
     }
     else {panic}
 
-warn $req->as_string;
+#warn $req->as_string;
     $result->request($req);
 
     my $resp = $self->agent->request($req);
@@ -198,14 +198,14 @@ warn $req->as_string;
              , err => $resp->status_line;
 
     my $ct = $resp->content_type;
-warn $resp->as_string;
+#warn $resp->as_string;
     $ct =~ m/xml/i
         or error __x"answer from solr server is not xml but {type}", type => $ct;
 
     my $dec = $self->xmlsimple
        ->XMLin($resp->decoded_content || $resp->content);
 
-warn Dumper $dec;
+#warn Dumper $dec;
     $result->decoded(_cleanup_parsed $dec);
     $result;
 }

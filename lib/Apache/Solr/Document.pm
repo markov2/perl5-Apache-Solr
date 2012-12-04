@@ -102,9 +102,7 @@ the server knowns which field is the unique one.  If it differs from the
 usual C<id>, you have to set it via global value C<$Apache::Solr::uniqueKey>
 =cut
 
-sub uniqueId() {
-warn "#1 ", $Apache::Solr::uniqueKey, "<<";
-shift->content($Apache::Solr::uniqueKey)}
+sub uniqueId() {shift->content($Apache::Solr::uniqueKey)}
 
 =method rank
 Only defined when the document contains results of a search: the ranking.
