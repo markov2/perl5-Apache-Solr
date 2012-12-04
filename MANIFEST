@@ -1,0 +1,17 @@
+ChangeLog
+MANIFEST
+Makefile.PL
+TODO
+lib/Apache/Solr.pm
+lib/Apache/Solr/Document.pm
+lib/Apache/Solr/JSON.pm
+lib/Apache/Solr/Result.pm
+lib/Apache/Solr/Tables.pm
+lib/Apache/Solr/XML.pm
+t/01use.t
+t/10endpoint.t
+t/11expand.t
+t/12facet.t
+t/20xml.t
+t/21json.t
+t/30result.t

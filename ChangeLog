@@ -1,0 +1,15 @@
+
+===== version history for Apache::Solr
+
+All modifications are made by Mark Overmeer, unless explicitly stated
+differently.
+
+version 0.91: Tue Dec  4 09:41:10 CET 2012
+	- ::Document field lookups by hash, not grep.
+	- ::Result::selected() returns ::Document, not HASH.  Then, ask
+	  for highlighed info via ::Result::highlighted($doc)
+	- many more tricks with a ::Document
+	- extractDocument() is work in progress
+
+version 0.90: Mon Dec  3 11:46:27 CET 2012
+	- initial implementation
