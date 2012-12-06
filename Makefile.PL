@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile
   ( NAME        => 'Apache::Solr'
-  , VERSION     => '0.91'
+  , VERSION     => '0.92'
   , PREREQ_PM   =>
      { Data::Dumper	=> 0
      , Encode           => 0
@@ -15,6 +15,7 @@ WriteMakefile
      , Time::HiRes	=> 0
      , URI		=> 0
      , XML::LibXML::Simple => 0
+     , MIME::Types      => 0
      }
   , AUTHOR      => 'Mark Overmeer'
   , ABSTRACT    => 'Client for (Lucene) Solr'

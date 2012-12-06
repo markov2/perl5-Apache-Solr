@@ -6,15 +6,18 @@ use strict;
 use Apache::Solr::Tables;
 use Log::Report    qw(solr);
 
-use URI            ();
 use Scalar::Util   qw(blessed);
-use LWP::UserAgent ();
 use Encode         qw(encode);
+
+use URI            ();
+use LWP::UserAgent ();
+use MIME::Types    ();
 
 use constant LATEST_SOLR_VERSION => '4.0';  # newest support by this module
 
 # overrule this when your host has a different unique field
 our $uniqueKey = 'id';
+my  $mimetypes = MIME::Types->new;
 
 sub _to_bool($)
 { $_[0] && $_[0] ne 'false' && $_[0] ne 'off' ? 'true' : 'false' }
@@ -24,14 +27,15 @@ Apache::Solr - Apache Solr (Lucene) extension
 
 =chapter SYNOPSIS
 
-  my $solr = Apache::Solr->new(...);
+  my $solr    = Apache::Solr->new(server => $url);
 
-  my $doc  = Apache::Solr::Document->new(...);
-  my $r = $solr->addDocument($doc);
-  $r or die;
+  my $doc     = Apache::Solr::Document->new(...);
+  my $results = $solr->addDocument($doc);
+  $results or die;
 
-  my $r = $solr->select(q => 'author:mark');
-  print $r->selected(0)->{doc}{author};
+  my $results = $solr->select(q => 'author:mark');
+  my $doc     = $results->selected(3);
+  print $doc->_author;
 
   # based on Log::Report, hence
   use Log::Report;
@@ -41,9 +45,9 @@ Apache::Solr - Apache Solr (Lucene) extension
 =chapter DESCRIPTION
 Solr is a stand-alone full-text search-engine, with loads of features.
 The main component is Lucene.  This module tries to provide a high
-level interface to access the data.
+level interface to the Solr server.
 
-B<BE WARNED>: this code is very new!  Please help me improve this code,
+B<BE WARNED>: this code is very new!  Please help me improve this code
 by sending bugs and suggesting improvements.
 
 =chapter METHODS
@@ -51,6 +55,8 @@ by sending bugs and suggesting improvements.
 =section Constructors
 
 =c_method new OPTIONS
+Create a client to connect to one "core" (collection) of the Solr
+server.
 
 =requires server URL
 The locations of the Solr server depends on the way the java environment
@@ -59,15 +65,18 @@ instantiated as such.
 
 =option  server_version VERSION
 =default server_version <latest>
-The latest version of the server software, currently 4.0.
+By default the latest version of the server software, currently 4.0.
+Try to get this setting right, because it will help you a lot in correct
+parameter use and support for the right features.
 
 =option  core NAME
 =default core C<undef>
-Sets the default core name for this client. When there is no core name
-specified, the core is selected by the server or already part of the URL.
+Set the core name to be addressed by this client. When there is no core
+name specified, the core is selected by the server or already part of
+the URL.
 
-You probably want a core dedicated for testing and one for the live
-environment.
+You probably want to set-up a core dedicated for testing and one for
+the live environment.
 
 =option  agent M<LWP::UserAgent> object
 =default agent <created internally>
@@ -85,7 +94,7 @@ Commit all changes immediately unless specified differently.
 =option  format  'XML'|'JSON'
 =default format  'XML'
 Communication format between client and server.  You may also instantiate
-one of the extensions directly.
+M<Apache::Solr::XML> or M<Apache::Solr::JSON> directly.
 
 =cut
 
@@ -94,8 +103,7 @@ sub new(@)
     if($class eq __PACKAGE__)
     {   my $format = delete $args{format} || 'XML';
         $format eq 'XML' || $format eq 'JSON'
-            or panic "unknown communication format {format} for solr"
-                 , format => $format;
+            or panic "unknown communication format '$format' for solr";
         $class .= '::' . $format;
         eval "require $class"; panic $@ if $@;
     }
@@ -399,13 +407,16 @@ sub delete(%)
     }
     @which or return;
 
-    if($self->serverVersion ge '1.4')
-    {   $self->_delete(\%attrs, \@which);
+    # JSON calls do not accept multiple ids at once (it seems in 4.0)
+    my $result;
+    if($self->serverVersion ge '1.4' && !$self->isa('Apache::Solr::JSON'))
+    {   $result = $self->_delete(\%attrs, \@which);
     }
     else
     {   # old servers accept only one id or query per delete
-        $self->_delete(\%attrs, [splice @which, 0, 2]) while @which;
+        $result = $self->_delete(\%attrs, [splice @which, 0, 2]) while @which;
     }
+    $result;
 }
 sub _delete(@) {panic "not implemented"}
 
@@ -440,8 +451,11 @@ Either C<file> or C<string> must be used.
 =default string C<undef>
 The string can either be 
 
+=option  content_type MIME
+=default content_type <from> filename
+
 =example
-   my $r = $solr->extractDocument(file => '/etc/host'
+   my $r = $solr->extractDocument(file => 'design.pdf'
      , literal_id => 'host');
 =cut
 
@@ -449,8 +463,9 @@ sub extractDocument(@)
 {   my $self  = shift;
     my %p     = $self->expandExtract(@_);
     my $data;
-error __x"extractDocument() is work in progress: please upgrade";
+#error __x"extractDocument() is work in progress: please upgrade";
 
+    my $ct    = delete $p{content_type};
     if(my $fn = delete $p{file})
     {   local $/;
         if(ref $fn eq 'GLOB') { $data = <$fn> }
@@ -462,6 +477,7 @@ error __x"extractDocument() is work in progress: please upgrade";
             close IN
                 or fault __x"read error for document {fn}", fn => $fn;
             $p{'resource.name'} ||= $fn;
+            $ct ||= $mimetypes->mimeTypeOf($fn);
         }
     }
     elsif(defined $p{string})
@@ -474,7 +490,7 @@ error __x"extractDocument() is work in progress: please upgrade";
     {   error __x"extract requires document as file or string";
     }
 
-    $self->_extract([%p], \$data);
+    $self->_extract([%p], \$data, $ct);
 }
 sub _extract($){panic "not implemented"}
 
@@ -562,6 +578,10 @@ sub expandExtract(@)
 =method expandSelect PAIRS
 The M<select()> method accepts many, many parameters.  These are passed
 to modules in the server, which need configuration before being usable.
+
+Besides the common parameters, like 'q' (query) and 'rows', there
+are parameters for various (pluggable) backends, usually prefixed
+by the backend abbreviation.
 =over 4
 =item * facet -> F<http://wiki.apache.org/solr/SimpleFacetParameters>
 =item * hl (highlight) -> F<http://wiki.apache.org/solr/HighlightingParameters>
@@ -570,13 +590,14 @@ to modules in the server, which need configuration before being usable.
 =item * group -> F<http://wiki.apache.org/solr/FieldCollapsing>
 =back
 
+You may use M<WebService::Solr::Query> to construct the query ('q').
+
 =examples
   my @r = $solr->expandSelect
     ( q => 'inStock:true', rows => 10
     , facet => {limit => -1, field => [qw/cat inStock/], mincount => 1}
     , f_cat_facet => {missing => 1}
     , hl    => {}
-    , f_cat_hl => {}
     , mlt   => { fl => 'manu,cat', mindf => 1, mintf => 1 }
     , stats => { field => [ 'price', 'popularity' ] }
     , group => { query => 'price:[0 TO 99.99]', limit => 3 }
@@ -700,6 +721,37 @@ sub endpoint($@)
     $take;
 }
  
+sub request($$;$$)
+{   my ($self, $url, $result, $body, $body_ct) = @_;
+
+    my $req;
+    if(!$body)
+    {   # request without payload
+        $req = HTTP::Request->new(GET => $url);
+    }
+    else
+    {   # request with 'form' payload
+        $req       = HTTP::Request->new
+          ( POST => $url
+          , [ Content_Type        => $body_ct
+            , Contend_Disposition => 'form-data; name="content"'
+            ]
+          , (ref $body eq 'SCALAR' ? $$body : $body)
+          );
+    }
+
+#warn $req->as_string;
+    $result->request($req);
+
+    my $resp = $self->agent->request($req);
+    $result->response($resp);
+
+    $resp->is_success
+        or warning __x"error response from solr server: {err}"
+             , err => $resp->status_line;
+    $resp;
+}
+
 #----------------------------------
 =chapter DETAILS
 
@@ -716,7 +768,7 @@ differences is that C<Apache::Solr> has much more abstraction.
 =item * warnings for deprecated and ignored parameters
 =item * smart result object with built-in trace and timing
 =item * hidden paging of results
-=item * flexible logging framework
+=item * flexible logging framework (Log::Report)
 =item * both-way XML or both-way JSON, not requests in XML and answers in JSON
 =item * access to plugings like terms and tika
 =item * no Moose

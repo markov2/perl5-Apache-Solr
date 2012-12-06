@@ -69,7 +69,13 @@ sub xmlsimple() {shift->{ASX_simple}}
 
 sub _select($)
 {   my ($self, $params) = @_;
-    my @params   = (wt => 'xml', @$params);
+    my @params   = @$params;
+
+    # select can be called automatically, more than once.  We do not
+    # want to add 'wt' each call.
+    my %params   = @params;
+    unshift @params, wt => 'xml' unless $params{wt};
+
     my $endpoint = $self->endpoint('select', params => \@params);
     my $result   = Apache::Solr::Result->new(params => \@params
       , endpoint => $endpoint);
@@ -77,13 +83,13 @@ sub _select($)
     $result;
 }
 
-sub _extract($$)
-{   my ($self, $params, $data) = @_;
+sub _extract($$$)
+{   my ($self, $params, $data, $ct) = @_;
     my @params   = (wt => 'xml', @$params);
     my $endpoint = $self->endpoint('update/extract', params => \@params);
     my $result   = Apache::Solr::Result->new(params => \@params
       , endpoint => $endpoint);
-    $self->request($endpoint, $result, $data);
+    $self->request($endpoint, $result, $data, $ct);
     $result;
 }
 
@@ -157,50 +163,20 @@ sub _terms($)
 =section Helpers
 =cut
 
-sub request($$;$)
-{   my ($self, $url, $result, $body) = @_;
+sub request($$;$$)
+{   my ($self, $url, $result, $body, $body_ct) = @_;
 
-    my $req;
-    if(!$body)
-    {   $req = HTTP::Request->new(GET => $url);
+    if(blessed $body && $body->isa('XML::LibXML::Document'))
+    {   $body_ct ||= 'text/xml; charset=utf-8';
+        $body      = \$body->toString;
     }
-    elsif(blessed $body && $body->isa('XML::LibXML::Document'))
-    {   # request with xml payload
-        $req = HTTP::Request->new
-          ( POST => $url
-          , [ Content_Type => 'text/xml; charset=utf-8' ]
-          , $body->toString
-          );
-    }
-    elsif(ref $body eq 'SCALAR')
-    {   # request with 'form' payload
-        my $attach = HTTP::Message->new
-          ( [ Content_Disposition => qq{form-data; name="content"}
-            , Content_Type => 'application/pdf' ]
-          , $$body
-          );
-        $req       = HTTP::Request->new
-          ( POST => $url
-          , [ Content_Type => 'multipart/form-data' ]
-          );
-        $req->add_part($attach);
-    }
-    else {panic}
 
-#warn $req->as_string;
-    $result->request($req);
-
-    my $resp = $self->agent->request($req);
-    $result->response($resp);
-
-    $resp->is_success
-        or warning __x"error response from solr server: {err}"
-             , err => $resp->status_line;
-
-    my $ct = $resp->content_type;
+    my $resp = $self->SUPER::request($url, $result, $body, $body_ct);
+    my $ct   = $resp->content_type;
 #warn $resp->as_string;
     $ct =~ m/xml/i
-        or error __x"answer from solr server is not xml but {type}", type => $ct;
+        or error __x"answer from solr server is not xml but {type}"
+            , type => $ct;
 
     my $dec = $self->xmlsimple
        ->XMLin($resp->decoded_content || $resp->content);
@@ -261,15 +237,14 @@ sub _cleanup_parsed($)
 =cut
 
 sub simpleUpdate($$;$)
-{   my ($self, $command) = (shift, shift);
-
-    my $attrs    = shift || {};
+{   my ($self, $command, $attrs, $content) = @_;
+    $attrs     ||= {};
     my @params   = (wt => 'xml', commit => delete $attrs->{commit});
     my $endpoint = $self->endpoint('update', params => \@params);
     my $result   = Apache::Solr::Result->new(params => \@params
       , endpoint => $endpoint);
 
-    my $doc      = $self->simpleDocument($command, $attrs);
+    my $doc      = $self->simpleDocument($command, $attrs, $content);
     $self->request($endpoint, $result, $doc);
     $result;
 }
@@ -280,7 +255,6 @@ Construct a simple XML structure.
 
 sub simpleDocument($;$$)
 {   my ($self, $command, $attrs, $content) = @_;
-
     my $doc  = XML::LibXML::Document->new('1.0', 'UTF-8');
     my $top  = $doc->createElement($command);
     $doc->setDocumentElement($top);
@@ -289,14 +263,16 @@ sub simpleDocument($;$$)
     $top->setAttribute($_ => $attrs->{$_}) for sort keys %$attrs;
 
     if(!defined $content) {}
-    elsif(ref $content eq 'HASH')
-    {   $top->addChild($doc->createElement($_ => $content->{$_}))
-            for sort keys %$content;
-    }
-    elsif(ref $content eq 'ARRAY')
-    {   my @c = @$content;
-        $top->addChild($doc->createElement(shift @c => shift @c))
-            while @c;
+    elsif(ref $content eq 'HASH' || ref $content eq 'ARRAY')
+    {   my @c = ref $content eq 'HASH' ? %$content : @$content;
+        while(@c)
+        {   my ($name, $values) = (shift @c, shift @c);
+            foreach my $value (ref $values eq 'ARRAY' ? @$values : $values)
+            {   my $node = $doc->createElement($name);
+                $node->appendText($value);
+                $top->addChild($node);
+            }
+        }
     }
     else
     {   $top->appendText($content);

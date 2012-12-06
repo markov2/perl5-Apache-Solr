@@ -9,6 +9,7 @@ use Log::Report          qw(solr);
 use Apache::Solr::Result ();
 use HTTP::Request        ();
 use JSON                 ();
+use Scalar::Util         qw(blessed);
 
 =chapter NAME
 Apache::Solr::JSON - Apache Solr (Lucene) client via JSON
@@ -68,7 +69,13 @@ See F<http://wiki.apache.org/solr/UpdateJSON>
 
 sub _select($)
 {   my ($self, $params) = @_;
-    my @params   = (wt => 'json', @$params);
+
+    # select may be called more than once, but do not add wt each time
+    # again.
+    my @params   = @$params;
+    my %params   = @params;
+    unshift @params, wt => 'json';
+
     my $endpoint = $self->endpoint('select', params => \@params);
     my $result   = Apache::Solr::Result->new(params => \@params
       , endpoint => $endpoint);
@@ -79,6 +86,16 @@ sub _select($)
         my $r = $dec->{result} = delete $dec->{response};
         $r->{doc} = delete $r->{docs};
     }
+    $result;
+}
+
+sub _extract($$$)
+{   my ($self, $params, $data, $ct) = @_;
+    my @params   = (wt => 'json', @$params);
+    my $endpoint = $self->endpoint('update/extract', params => \@params);
+    my $result   = Apache::Solr::Result->new(params => \@params
+      , endpoint => $endpoint);
+    $self->request($endpoint, $result, $data, $ct);
     $result;
 }
 
@@ -171,33 +188,16 @@ sub _terms($)
 =section Helpers
 =cut
 
-sub request($$;$)
-{   my ($self, $url, $result, $body) = @_;
+sub request($$;$$)
+{   my ($self, $url, $result, $body, $body_ct) = @_;
 
-    my $req;
-    if($body)
-    {   # request with payload
-        $req = HTTP::Request->new
-          ( POST => $url
-          , [ Content_Type => 'application/json; charset=utf-8' ]
-          , $self->json->encode($body)
-          );
-    }
-    else
-    {   $req = HTTP::Request->new(GET => $url);
+    if(ref $body && ref $body ne 'SCALAR')
+    {   $body_ct ||= 'application/json; charset=utf-8';
+        $body      = \$self->json->encode($body);
     }
 
-#warn $req->as_string;
-    $result->request($req);
-
-    my $resp = $self->agent->request($req);
-    $result->response($resp);
-
-    $resp->is_success
-        or warning __x"error response from solr server: {err}"
-             , err => $resp->status_line;
-
-#warn $resp->as_string;
+    my $resp = $self->SUPER::request($url, $result, $body, $body_ct);
+    my $ct   = $resp->content_type;
 
     # At least Solr 4.0 response ct=text/plain while producing JSON
     # my $ct = $resp->content_type;
@@ -217,12 +217,12 @@ sub request($$;$)
 =cut
 
 sub simpleUpdate($$;$)
-{   my ($self, $command) = (shift, shift);
+{   my ($self, $command, $attrs, $content) = @_;
 
     my $sv       = $self->serverVersion;
     $sv ge '3.1' or error __x"solr version too old for updates in JSON syntax";
 
-    my $attrs    = shift || {};
+    $attrs     ||= {};
     my @params   = (wt => 'json', commit => delete $attrs->{commit});
     my $endpoint = $self->endpoint
       ( ($sv lt '4.0' ? 'update/json' : 'update')
@@ -231,7 +231,9 @@ sub simpleUpdate($$;$)
     my $result   = Apache::Solr::Result->new(params => \@params
       , endpoint => $endpoint);
 
-    my $doc      = $self->simpleDocument($command, $attrs);
+    my %params   = (%$attrs
+      , (!$content ? () : ref $content eq 'HASH' ? %$content : @$content));
+    my $doc      = $self->simpleDocument($command, \%params);
     $self->request($endpoint, $result, $doc);
     $result;
 }

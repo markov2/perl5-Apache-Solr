@@ -16,7 +16,7 @@ BEGIN {
     $server = $ENV{SOLR_TEST_SERVER}
         or plan skip_all => "no SOLR_TEST_SERVER provided";
 
-    plan tests => 36;
+    plan tests => 42;
 }
 
 require_ok('Apache::Solr');
@@ -37,8 +37,12 @@ isa_ok($result, 'Apache::Solr::Result');
 is($result->endpoint, "$result");
 
 $result->showTimings(\*STDERR);
-
 ok($result->success, 'successful');
+
+# reset the database
+my $r0 = $solr->delete(id => [1,2,3]);
+ok($r0->success, 'delete succeeded');
+#warn Dumper $r0;
 
 ### test $solr->addDocument()
 my $d1a = Apache::Solr::Document->new
@@ -104,25 +108,30 @@ cmp_ok($t3->selectedPageNr(0), '==', 0, 'item 0 on page 0');
 cmp_ok($t3->selectedPageNr(1), '==', 1, 'item 1 on page 1');
 
 my $d3a = $t3->selected(0);
-is($d3a->rank, 0, 'rank');
+is($d3a->rank, 0, 'rank 0');
 #warn Dumper $d3a;
+my %id3 = ($d3a->uniqueId => $d3a);
 isa_ok($d3a, 'Apache::Solr::Document', 'got 1 doc answer');
-my $h3a = $t3->highlighted($d3a);
-isa_ok($h3a, 'Apache::Solr::Document', 'got 1 hl answer');
-is($h3a->_content, '<body><em>tac</em> too', 'test hl content');
 
 my $d3b = $t3->selected(1, $solr);
-warn Dumper $d3b;
+is($d3b->rank, 1, 'rank 1');
+#warn Dumper $d3b;
 isa_ok($d3b, 'Apache::Solr::Document', 'got 2 answer');
-warn "<<<a";
-is($d3b->uniqueId, 2, "id=2");
-warn "<<<b";
-is($d3b->rank, 1, 'rank');
+$id3{$d3b->uniqueId} = $d3b;
+cmp_ok(keys %id3, '==', 2, 'both documents found');
+ok($id3{1}, 'found id=1');
+ok($id3{2}, 'found id=2');
 
-exit 0;
+my $h3a = $t3->highlighted($id3{1});
+isa_ok($h3a, 'Apache::Solr::Document', 'got 1 hl answer');
+is($h3a->_content, '<html>tic <em>tac</em>', 'test hl content');
 
 ### upload document
 
-my $t4 = $solr->extractDocument( #overwrite => 1, commit => 1
-   extractOnly => 1, file => 't/a.pdf');
-warn Dumper $t4;
+#my $t4 = $solr->extractDocument( #overwrite => 1, commit => 1
+#   extractOnly => 1, file => 't/a.pdf');
+my $t4 = $solr->extractDocument(overwrite => 1, commit => 1,
+   literal_id => 3, file => 't/a.pdf');
+ok($t4, 'uploaded document 3, an pdf')
+
+

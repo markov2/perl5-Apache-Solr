@@ -207,7 +207,6 @@ selected answers.
 sub selected($;$)
 {   my ($self, $rank, $client) = @_;
     my $dec    = $self->decoded;
-#warn Dumper $dec;
     my $result = $dec->{result}
         or panic "there are no results (yet)";
 
@@ -236,8 +235,9 @@ Return information which relates to the selected DOCUMENT.
 
 sub highlighted($)
 {   my ($self, $doc) = @_;
-    my $rank = $doc->rank;
-    my $hl   = $self->selectedPage($rank)->decoded->{highlighting}
+    my $rank   = $doc->rank;
+    my $pagenr = $self->selectedPageNr($rank);
+    my $hl     = $self->selectedPage($pagenr)->decoded->{highlighting}
         or error __x"there is no highlighting information in the result";
     Apache::Solr::Document->fromResult($hl->{$doc->uniqueId}, $rank);
 }
@@ -322,9 +322,8 @@ sub selectedPageLoad($;$)
     $page->_pageset($self->{ASR_pages});
 
     # put new page in shared table of pages
+    # no weaken here?  only the first request is captured in the main program.
     $self->{ASR_pages}[$pagenr] = $page;
-    weaken $self->{ASR_pages}[$pagenr];
-    $page;
 }
 
 =method replaceParams HASH, OLDPARAMS
