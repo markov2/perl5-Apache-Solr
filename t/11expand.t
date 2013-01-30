@@ -7,7 +7,7 @@ use strict;
 use lib 'lib';
 use Apache::Solr;
 
-use Test::More tests => 3;
+use Test::More tests => 4;
 
 # the server will not be called in this script.
 my $server = 'http://localhost:8080/solr';
@@ -19,7 +19,7 @@ isa_ok($solr, 'Apache::Solr');
 
 ### Expansion of facets tested in t/12facet.t
 
-### Terms
+### expandTerms
 
 my @t = $solr->expandTerms(fl => 'subject', limit => 100
   , mincount => 5, 'terms.maxcount' => 10, raw => 1, raw => 0
@@ -47,5 +47,26 @@ terms.prefix
 at
 terms.regex
 a.*b
+_EXPECT
+
+###### expandExtract
+
+my @t2 = $solr->expandExtract(a => 1, extractOnly => 1
+  , 'literal.id' => 5, literal => { b => 'tic' }, literals => { c => 'tac' }
+  , literal_xyz => 42
+);
+is(join("\n",@t2,''), <<_EXPECT, 'test extract expansion');
+a
+1
+extractOnly
+true
+literal.id
+5
+literal.b
+tic
+literal.c
+tac
+literal.xyz
+42
 _EXPECT
 

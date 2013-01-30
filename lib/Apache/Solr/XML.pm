@@ -95,11 +95,11 @@ sub _extract($$$)
 
 sub _add($$$)
 {   my ($self, $docs, $attrs, $params) = @_;
-    $attrs   ||= {};
-    $params  ||= {};
+    $attrs  ||= {};
+    $params ||= {};
 
-    my $doc    = XML::LibXML::Document->new('1.0', 'UTF-8');
-    my $add    = $doc->createElement('add');
+    my $doc   = XML::LibXML::Document->new('1.0', 'UTF-8');
+    my $add   = $doc->createElement('add');
     $add->setAttribute($_ => $attrs->{$_}) for sort keys %$attrs;
 
     $add->addChild($self->_doc2xml($doc, $_))
@@ -109,7 +109,7 @@ sub _add($$$)
 
     my @params   = (wt => 'xml', %$params);
     my $endpoint = $self->endpoint('update', params => \@params);
-    my $result = Apache::Solr::Result->new(params => \@params
+    my $result   = Apache::Solr::Result->new(params => \@params
       , endpoint => $endpoint);
     $self->request($endpoint, $result, $doc);
     $result;
@@ -233,7 +233,7 @@ sub _cleanup_parsed($)
     else {panic $data}
 }
 
-=method simpleUpdate  COMMAND, ATTRIBUTES, [CONTENT]
+=method simpleUpdate COMMAND, ATTRIBUTES, [CONTENT]
 =cut
 
 sub simpleUpdate($$;$)

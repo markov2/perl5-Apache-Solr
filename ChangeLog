@@ -4,6 +4,17 @@
 All modifications are made by Mark Overmeer, unless explicitly stated
 differently.
 
+version 0.93: Wed Jan 30 15:53:08 CET 2013
+	Improvements:
+	- support perl pre-5.10 by removal single use of //
+	- ::Document::boost() now also for fields
+	- further documentation improvements
+	- much better error reporting, use $result->errors()
+	- surpress early warning about connection errors.
+	- take filename from extractDocument() even if the data is
+	  specified as string.
+	- extended the power of expandExtract()
+
 version 0.92: Thu Dec  6 09:48:18 CET 2012
 	- fix delete()
 	- no multiple deletes in JSON available (it seems)

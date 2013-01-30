@@ -19,8 +19,7 @@ use constant LATEST_SOLR_VERSION => '4.0';  # newest support by this module
 our $uniqueKey = 'id';
 my  $mimetypes = MIME::Types->new;
 
-sub _to_bool($)
-{ $_[0] && $_[0] ne 'false' && $_[0] ne 'off' ? 'true' : 'false' }
+sub _to_bool($) {$_[0] && $_[0] ne 'false' && $_[0] ne 'off' ? 'true' : 'false'}
 
 =chapter NAME
 Apache::Solr - Apache Solr (Lucene) extension
@@ -31,13 +30,13 @@ Apache::Solr - Apache Solr (Lucene) extension
 
   my $doc     = Apache::Solr::Document->new(...);
   my $results = $solr->addDocument($doc);
-  $results or die;
+  $results or die $results->solrError;
 
   my $results = $solr->select(q => 'author:mark');
   my $doc     = $results->selected(3);
   print $doc->_author;
 
-  # based on Log::Report, hence
+  # based on Log::Report, hence (for communication errors and such)
   use Log::Report;
   dispatcher SYSLOG => 'default';  # now all warnings/error to syslog
   try { $solr->select(...) }; print $@->wasFatal;
@@ -449,7 +448,8 @@ Either C<file> or C<string> must be used.
 
 =option  string STRING|SCALAR
 =default string C<undef>
-The string can either be 
+The document provided as normal text or a reference to raw text.  You may
+also specify the C<file> option with a filename.
 
 =option  content_type MIME
 =default content_type <from> filename
@@ -463,10 +463,19 @@ sub extractDocument(@)
 {   my $self  = shift;
     my %p     = $self->expandExtract(@_);
     my $data;
-#error __x"extractDocument() is work in progress: please upgrade";
 
     my $ct    = delete $p{content_type};
-    if(my $fn = delete $p{file})
+    my $fn    = delete $p{file};
+    $p{'resource.name'} ||= $fn if $fn && !ref $fn;
+
+    if(defined $p{string})
+    {   # try to avoid copying the data, which can be huge
+        my $data = ref $p{string} eq 'SCALAR'
+                 ? encode(utf8 => ${$p{string}})
+                 : encode(utf8 => $p{string});
+        delete $p{string};
+    }
+    elsif($fn)
     {   local $/;
         if(ref $fn eq 'GLOB') { $data = <$fn> }
         else
@@ -476,15 +485,8 @@ sub extractDocument(@)
             $data = <IN>;
             close IN
                 or fault __x"read error for document {fn}", fn => $fn;
-            $p{'resource.name'} ||= $fn;
             $ct ||= $mimetypes->mimeTypeOf($fn);
         }
-    }
-    elsif(defined $p{string})
-    {   # try to avoid copying the data, which can be huge
-        my $data = ref $p{string} eq 'SCALAR'
-                 ? encode(utf8 => ${$p{string}})
-                 : encode(utf8 => $p{string});
     }
     else
     {   error __x"extract requires document as file or string";
@@ -566,12 +568,33 @@ sub expandTerms(@)
 
 =method expandExtract PAIRS|ARRAY
 Used by M<extractDocument()>.
+
+[0.93] If the key is C<literal> or C<literals>, then the keys in the value
+HASH get 'literal.' prepended.  "Literal" are fields you add yourself to the
+SolrCEL output.
+
+=example
+  my $result = $solr->extractDocument(string => $document
+     , resource_name => $fn, extractOnly => 1, boost.xyz => 1
+     , literals => { id => 5, b => 'tic' }, literal_xyz => 42);
+);
+
 =cut
 
 sub expandExtract(@)
 {   my $self = shift;
-    my $p    = @_==1 ? shift : [@_];
-    my @t    = $self->_simpleExpand($p);
+    my @p = @_==1 ? @{(shift)} : @_;
+    my @s;
+    while(@p)
+    {   my ($k, $v) = (shift @p, shift @p);
+        if($k eq 'literal' || $k eq 'literals')
+        {   my @l = ref $v eq 'HASH' ? %$v : @$v;
+            while(@l) { push @s, 'literal.'.(shift @l) => shift @l }
+        }
+        else { push @s, $k => $v }
+    }
+
+    my @t = @s ? $self->_simpleExpand(\@s) : ();
     wantarray ? @t : \@t;
 }
 
@@ -745,10 +768,6 @@ sub request($$;$$)
 
     my $resp = $self->agent->request($req);
     $result->response($resp);
-
-    $resp->is_success
-        or warning __x"error response from solr server: {err}"
-             , err => $resp->status_line;
     $resp;
 }
 

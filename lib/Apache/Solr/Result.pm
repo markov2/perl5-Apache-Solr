@@ -18,9 +18,24 @@ Apache::Solr::Result - Apache Solr (Lucene) result container
 
 =chapter SYNOPSIS
 
+  # All operations return a ::Result object
   my $result = $solr->select(...);
+
+  $result or die $result->solrError; # error reported by Solr
+  $result or die $result->errors;    # any error caught by this object
+
+  # Lots of trace information included
+  $result->showTimings;
+
+  # ::Document containing the requested fields from a select() search
+  my $doc1   = $result->selected(0);
+
+  # ::Document containing the highlight info from a selected document
+  my $hl1    = $result->highlighted($doc1);
+
+  # Some operations have helper methods
   my $result = $solr->queryTerm(...);
-  $result or die $result->error;  # $result is object but false
+  print Dumper $result->terms;
 
 =chapter DESCRIPTION
 
@@ -32,6 +47,7 @@ use overload
     '""' => 'endpoint'
   , bool => 'success';
 
+#----------------------
 =chapter METHODS
 =section Constructors
 
@@ -128,6 +144,8 @@ sub success() { my $s = shift; $s->{ASR_success} ||= $s->solrStatus==0 }
 =method solrQTime
 Elapse (as reported by the server) to handle the request.  In seconds!
 =method solrError
+=method serverError
+=method httpError
 =cut
 
 sub solrStatus()
@@ -144,33 +162,48 @@ sub solrQTime()
 sub solrError()
 {   my $dec  = shift->decoded or return;
     my $err  = $dec->{error};
-    $err ? $err->{msg} : undef;
+    $err ? $err->{msg} : ();
+}
+
+sub httpError()
+{   my $resp = shift->response or return;
+    $resp->status_line;
+}
+
+sub serverError()
+{   my $resp = shift->response or return;
+    $resp->code != 200 or return;
+    my $ct   = $resp->content_type;
+    $ct eq 'text/html' or return;
+    my $body = $resp->decoded_content || $resp->content;
+    $body =~ s!.*<body>!!;
+    $body =~ s!</body>.*!!;
+    $body =~ s!</h[0-6]>|</p>!\n!g;  # cheap reformatter
+    $body =~ s!</b>\s*!: !g;
+    $body =~ s!<[^>]*>!!gs;
+    $body;
+}
+
+=method errors
+All errors collected by this object into one string.
+=cut
+
+sub errors()
+{   my $self = shift;
+    my @errors;
+    if(my $h = $self->httpError)   { push @errors, "HTTP error:",   "   $h" }
+    if(my $a = $self->serverError) 
+    {   $a =~ s/^/   /gm;
+        push @errors, "Server error:", $a;
+    }
+    if(my $s = $self->solrError)   { push @errors, "Solr error:",   "   $s" }
+    join "\n", @errors;
 }
 
 #--------------------------
 =section Response information
 
-=method terms FIELD [, TERMS]
-Returns the results of a 'terms' query (see M<Apache::Solr::queryTerms()>),
-which is a HASH.
-
-When TERMS are specified, a new table is set.
-
-In Solr XML (at least upto v4.0) the results are presented as lst, not arr
-So: their sort order is lost.
-
-=cut
-
-sub terms($;$)
-{   my ($self, $field) = (shift, shift);
-    return $self->{ASR_terms}{$field} = shift if @_;
-
-    my $r = $self->{ASR_terms}{$field}
-        or error __x"no search for terms on field {field} requested"
-            , field => $field;
-
-    $r;
-}
+=subsection in response to a select()
 
 =method nrSelected
 Returns the number of selected documents, as result of a
@@ -240,6 +273,31 @@ sub highlighted($)
     my $hl     = $self->selectedPage($pagenr)->decoded->{highlighting}
         or error __x"there is no highlighting information in the result";
     Apache::Solr::Document->fromResult($hl->{$doc->uniqueId}, $rank);
+}
+
+#--------------------------
+=subsection in response to a queryTerms()
+
+=method terms FIELD [, TERMS]
+Returns the results of a 'terms' query (see M<Apache::Solr::queryTerms()>),
+which is a HASH.
+
+When TERMS are specified, a new table is set.
+
+In Solr XML (at least upto v4.0) the results are presented as lst, not arr
+So: their sort order is lost.
+
+=cut
+
+sub terms($;$)
+{   my ($self, $field) = (shift, shift);
+    return $self->{ASR_terms}{$field} = shift if @_;
+
+    my $r = $self->{ASR_terms}{$field}
+        or error __x"no search for terms on field {field} requested"
+            , field => $field;
+
+    $r;
 }
 
 #--------------------------

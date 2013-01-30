@@ -14,26 +14,29 @@ Apache::Solr::Document - Apache Solr (Lucene) Document container
   my $doc = Apache::Solr::Document->new(...);
   $solr->addDocument($doc, commit => 1, overwrite => 1)
 
-  # take first result
+  # take results
   my $results = $solr->select
     ( q  => 'text:gold'             # search text-fields for 'gold'
     , hl => { field => 'content' }  # highlight 'gold' in content'
     );
 
   my $doc = $results->selected(3);  # fourth answer
-  print $doc->rank;         # 3
+  print $doc->rank;                 # 3
+
+  print $doc->uniqueId;             # usually the 'id' field
+
   print $doc->field('subject')->{content};
   print $doc->content('subject');   # same
   print $doc->_subject;             # same, via autoload (mind the '_'!)
 
   my $hl  = $results->highlighted($doc);  # another ::Doc object
-  print $hl->_content;              # highlighted content
+  print $hl->_content;              # highlighted field named 'content'
 
 =chapter DESCRIPTION
-This object wraps-up an document: a set of fields.
-Either, this is a document which has to be added to the Solr database
-using M<Apache::Solr::addDocument()>,
-or the subset of information as returned by M<Apache::Solr::select()>.
+This object wraps-up an document: a set of fields.  Either, this
+is a document which has to be added to the Solr database using
+M<Apache::Solr::addDocument()>, or the subset of a document as returned
+by M<Apache::Solr::select()>.
 
 =chapter METHODS
 =section Constructors
@@ -53,8 +56,7 @@ sub new(@) { my $c = shift; (bless {}, $c)->init({@_}) }
 sub init($)
 {   my ($self, $args) = @_;
 
-    $self->{ASD_boost}    = $args->{boost} // 1.0;
-
+    $self->{ASD_boost}    = $args->{boost} || 1.0;
     $self->{ASD_fields}   = [];   # ordered
     $self->{ASD_fields_h} = {};   # grouped by name
     $self->addFields($args->{fields});
@@ -86,14 +88,25 @@ sub fromResult($$)
 
 #---------------
 =section Accessors
-=method boost
+
+=method boost [FIELDNAME, [BOOST]]
 Boost value for all fields in the document.
+
+[0.93] When a FIELD NAME is given, the boost specific for that field is
+returned (not looking at the document's boost value)  This can also be
+used to set the BOOST value for the field.
 
 =method fieldNames
 All used unique names.
 =cut
 
-sub boost() {shift->{ASD_boost}}
+sub boost(;$)
+{   my $self = shift;
+    @_ or return $self->{ASD_boost};
+    my $f = $self->field(shift) or return;
+    @_ ? $f->{boost} = shift : $f->{boost};
+}
+
 sub fieldNames() { my %c; $c{$_->{name}}++ for shift->fields; sort keys %c }
 
 =method uniqueId
@@ -127,7 +140,17 @@ sub fields(;$)
 }
 
 =method field NAME
-Returns the first field with NAME (or undef).  This is a HASH.
+Returns the first field with NAME (or undef).  This is a HASH, containing
+C<name>, C<content> and sometimes a C<boost> key.
+
+If you need the content (that's the usually the case), you can also
+(probably more readible) use the (autoloaded) method NAMEd after the
+field with a leading '_'.
+
+=examples
+   $doc->field('subject')->{content};
+   $doc->content('subject);
+   $doc->_subject;
 =cut
 
 sub field($)
