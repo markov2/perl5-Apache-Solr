@@ -4,6 +4,20 @@
 All modifications are made by Mark Overmeer, unless explicitly stated
 differently.
 
+version 0.94: Thu Jan 31 15:12:34 CET 2013
+	Fixes:
+	- extractDocument(string) did not work.
+
+	Improvements:
+	- catch and check deprecation warning in t/12facet.t
+	- accept parameter hashes for fmap, resource and boost in expandExtract
+	- honour autocommit in extractDocument()
+	- the user agent will be default be shared when multiple Solr objects
+	  are created.
+	- do not die on HTML answers: put it in $result->success
+	- add \n to ::Results::errors()
+	- add ::coreStatus, ::coreReload, and ::coreUnload
+
 version 0.93: Wed Jan 30 15:53:08 CET 2013
 	Improvements:
 	- support perl pre-5.10 by removal single use of //

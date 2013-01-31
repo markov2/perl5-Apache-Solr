@@ -7,8 +7,9 @@ use strict;
 
 use lib 'lib';
 use Apache::Solr::XML;
+use Log::Report  'try';
 
-use Test::More tests => 15;
+use Test::More tests => 17;
 
 use Data::Dumper;
 $Data::Dumper::Indent    = 1;
@@ -308,12 +309,18 @@ my $f6 = <<'_FACET_FIELDS6';
 _FACET_FIELDS6
 
 ### Date Faceting: per day for the past 5 days
+try {  # catch 'deprecated warning'
 check_get
   'http://localhost:8983/solr/select/?q=*:*&rows=0&facet=true&facet.date=timestamp&facet.date.start=NOW/DAY-5DAYS&facet.date.end=NOW/DAY%2B1DAY&facet.date.gap=%2B1DAY',
   { q => '*:*', rows => 0
   , facet => { date => 'timestamp', date_gap => '+1DAY'
              , date_start => 'NOW/DAY-5DAYS', date_end => 'NOW/DAY+1DAY'}
   }, 'example 7 get';
+};
+
+my @ex = $@->exceptions;
+cmp_ok(scalar @ex, '==', 1, 'exceptions');
+is("$ex[0]","warning: deprecated solr main::check_get(facet.date) since 3.1\n");
 
 
 my $f7 = <<'_FACET_FIELDS7';

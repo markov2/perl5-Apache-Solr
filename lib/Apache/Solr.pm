@@ -6,8 +6,9 @@ use strict;
 use Apache::Solr::Tables;
 use Log::Report    qw(solr);
 
-use Scalar::Util   qw(blessed);
-use Encode         qw(encode);
+use Scalar::Util   qw/blessed/;
+use Encode         qw/encode/;
+use Scalar::Util   qw/weaken/;
 
 use URI            ();
 use LWP::UserAgent ();
@@ -16,8 +17,9 @@ use MIME::Types    ();
 use constant LATEST_SOLR_VERSION => '4.0';  # newest support by this module
 
 # overrule this when your host has a different unique field
-our $uniqueKey = 'id';
-my  $mimetypes = MIME::Types->new;
+our $uniqueKey  = 'id';
+my  $mimetypes  = MIME::Types->new;
+my  $http_agent;
 
 sub _to_bool($) {$_[0] && $_[0] ne 'false' && $_[0] ne 'off' ? 'true' : 'false'}
 
@@ -80,8 +82,12 @@ the live environment.
 =option  agent M<LWP::UserAgent> object
 =default agent <created internally>
 Agent which implements the communication between this client and the
-Solr server.  When you have multiple C<Apache::Solr> objects in your
-program, you may want to share this agent, to share the connection.
+Solr server.
+
+When you have multiple C<Apache::Solr> objects in your program, you may
+want to share this agent, to share the connection. Since [0.94], this
+will happen automagically: the parameter defaults to the agent created
+for the previous object.
 
 Do not forget to install M<LWP::Protocol::https> if you need to connect
 via https.
@@ -115,7 +121,11 @@ sub init($)
     $self->{AS_core}     = $args->{core};
     $self->{AS_commit}   = exists $args->{autocommit} ? $args->{autocommit} : 1;
     $self->{AS_sversion} = $args->{server_version} || LATEST_SOLR_VERSION;
-    $self->{AS_agent}    = $args->{agent} || LWP::UserAgent->new(keep_alive=>1);
+
+    $http_agent = $self->{AS_agent} = $args->{agent} ||
+       $http_agent || LWP::UserAgent->new(keep_alive=>1);
+    weaken $http_agent;
+
     $self;
 }
 
@@ -127,6 +137,7 @@ Returns the CORE, when not defined the default core as set by M<new(core)>.
 May return C<undef>.
 
 =method autocommit [BOOLEAN]
+
 =method agent
 Returns the M<LWP::UserAgent> object which maintains the connection to
 the server.
@@ -442,6 +453,10 @@ C<string> with data.
 
 See F<http://wiki.apache.org/solr/ExtractingRequestHandler>
 
+=option  commit BOOLEAN
+=default commit M<new(autocommit)>
+[0.94] commit the document to the database.
+
 =option  file FILENAME|FILEHANDLE
 =default file C<undef>
 Either C<file> or C<string> must be used.
@@ -461,6 +476,10 @@ also specify the C<file> option with a filename.
 
 sub extractDocument(@)
 {   my $self  = shift;
+
+    $self->serverVersion ge '1.4'
+        or error __x"extractDocument() requires Solr v1.4 or higher";
+        
     my %p     = $self->expandExtract(@_);
     my $data;
 
@@ -468,11 +487,14 @@ sub extractDocument(@)
     my $fn    = delete $p{file};
     $p{'resource.name'} ||= $fn if $fn && !ref $fn;
 
+    $p{commit}  = _to_bool $self->autocommit
+        unless exists $p{commit};
+
     if(defined $p{string})
     {   # try to avoid copying the data, which can be huge
-        my $data = ref $p{string} eq 'SCALAR'
-                 ? encode(utf8 => ${$p{string}})
-                 : encode(utf8 => $p{string});
+        $data = ref $p{string} eq 'SCALAR'
+              ? encode(utf8 => ${$p{string}})
+              : encode(utf8 => $p{string});
         delete $p{string};
     }
     elsif($fn)
@@ -495,6 +517,79 @@ sub extractDocument(@)
     $self->_extract([%p], \$data, $ct);
 }
 sub _extract($){panic "not implemented"}
+
+#-------------------------
+=subsection Core management
+See F<http://lucidworks.lucidimagination.com/display/solr/Configuring+solr.xml>
+The CREATE, SWAP, ALIAS, and RENAME actions are not yet supported, because
+they are not very useful, it seems.
+=cut
+
+sub _core_admin($@)
+{   my ($self, $action, $params) = @_;
+    $params->{core} ||= $self->core;
+    
+    my $endpoint = $self->endpoint('cores', core => 'admin'
+      , params => $params);
+
+    my @params   = %$params;
+    my $result   = Apache::Solr::Result->new(params => [ %$params ]
+      , endpoint => $endpoint);
+
+    $self->request($endpoint, $result);
+    $result;
+}
+
+=method coreStatus
+[0.94] Returns a HASH with information about this core.  There is no
+description about the exact structure and interpretation of this data.
+
+=option  core NAME
+=default core <this core>
+
+=example
+  my $result = $solr->coreStatus;
+  $result or die $result->errors;
+
+  use Data::Dumper;
+  print Dumper $result->decoded->{status};
+=cut
+
+sub coreStatus(%)
+{   my ($self, %args) = @_;
+    $self->_core_admin('STATUS', \%args);
+}
+
+=method coreReload [CORE]
+[0.94] Load a new core (on the server) from the configuration of this
+core. While the new core is initializing, the existing one will continue
+to handle requests. When the new Solr core is ready, it takes over and
+the old core is unloaded.
+
+=option  core NAME
+=default core <this core>
+
+=example
+  my $result = $solr->coreReload;
+  $result or die $result->errors;
+=cut
+
+sub coreReload(%)
+{   my ($self, %args) = @_;
+    $self->_core_admin('RELOAD', \%args);
+}
+
+=method coreUnload [OPTIONS]
+Removes a core from Solr. Active requests will continue to be processed, but no new requests will be sent to the named core. If a core is registered under more than one name, only the given name is removed.
+
+=option  core NAME
+=default core <this core>
+=cut
+
+sub coreUnload($%)
+{   my ($self, %args) = @_;
+    $self->_core_admin('UNLOAD', \%args);
+}
 
 #--------------------------
 =section Helpers
@@ -569,17 +664,31 @@ sub expandTerms(@)
 =method expandExtract PAIRS|ARRAY
 Used by M<extractDocument()>.
 
-[0.93] If the key is C<literal> or C<literals>, then the keys in the value
-HASH get 'literal.' prepended.  "Literal" are fields you add yourself to the
-SolrCEL output.
+[0.93] If the key is C<literal> or C<literals>, then the keys in the
+value HASH (or ARRAY of PAIRS) get 'literal.' prepended.  "Literals"
+are fields you add yourself to the SolrCEL output.  Unless C<extractOnly>,
+you need to specify the 'id' literal.
+
+[0.94] You can also use C<fmap>, C<boost>, and C<resource> with an
+HASH (or ARRAY-of-PAIRS).
 
 =example
   my $result = $solr->extractDocument(string => $document
-     , resource_name => $fn, extractOnly => 1, boost.xyz => 1
-     , literals => { id => 5, b => 'tic' }, literal_xyz => 42);
+     , resource_name => $fn, extractOnly => 1
+     , literals => { id => 5, b => 'tic' }, literal_xyz => 42
+     , fmap => { id => 'doc_id' }, fmap_subject => 'mysubject'
+     , boost => { abc => 3.5 }, boost_xyz => 2.0);
 );
 
 =cut
+
+sub _expand_flatten($$)
+{   my ($self, $v, $prefix) = @_;
+    my @l = ref $v eq 'HASH' ? %$v : @$v;
+    my @s;
+    push @s, $prefix.(shift @l) => (shift @l) while @l;
+    @s;
+}
 
 sub expandExtract(@)
 {   my $self = shift;
@@ -587,11 +696,13 @@ sub expandExtract(@)
     my @s;
     while(@p)
     {   my ($k, $v) = (shift @p, shift @p);
-        if($k eq 'literal' || $k eq 'literals')
-        {   my @l = ref $v eq 'HASH' ? %$v : @$v;
-            while(@l) { push @s, 'literal.'.(shift @l) => shift @l }
-        }
-        else { push @s, $k => $v }
+        if(!ref $v)
+             { push @s, $k => $v }
+        elsif($k eq 'literal' || $k eq 'literals')
+             { push @s, $self->_expand_flatten($v, 'literal.') }
+        elsif($k eq 'fmap' || $k eq 'boost' || $k eq 'resource')
+             { push @s, $self->_expand_flatten($v, "$k.") }
+        else { panic "unknown set '$k'" }
     }
 
     my @t = @s ? $self->_simpleExpand(\@s) : ();

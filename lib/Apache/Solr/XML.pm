@@ -174,9 +174,7 @@ sub request($$;$$)
     my $resp = $self->SUPER::request($url, $result, $body, $body_ct);
     my $ct   = $resp->content_type;
 #warn $resp->as_string;
-    $ct =~ m/xml/i
-        or error __x"answer from solr server is not xml but {type}"
-            , type => $ct;
+    $ct =~ m/xml/i or return $result;
 
     my $dec = $self->xmlsimple
        ->XMLin($resp->decoded_content || $resp->content);

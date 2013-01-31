@@ -161,8 +161,10 @@ sub solrQTime()
 
 sub solrError()
 {   my $dec  = shift->decoded or return;
-    my $err  = $dec->{error};
-    $err ? $err->{msg} : ();
+    my $err  = $dec->{error} || {};
+    my $msg  = $err->{msg}   || '';
+    $msg =~ s/\s*$//s;
+    length $msg ? $msg : ();
 }
 
 sub httpError()
@@ -197,7 +199,7 @@ sub errors()
         push @errors, "Server error:", $a;
     }
     if(my $s = $self->solrError)   { push @errors, "Solr error:",   "   $s" }
-    join "\n", @errors;
+    join "\n", @errors, '';
 }
 
 #--------------------------

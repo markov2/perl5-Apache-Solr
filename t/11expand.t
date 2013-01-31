@@ -54,6 +54,8 @@ _EXPECT
 my @t2 = $solr->expandExtract(a => 1, extractOnly => 1
   , 'literal.id' => 5, literal => { b => 'tic' }, literals => { c => 'tac' }
   , literal_xyz => 42
+  , fmap => { id => 'doc_id' }, fmap_subject => 'mysubject'
+  , boost => { abc => 3.5 }, boost_xyz => 2.0
 );
 is(join("\n",@t2,''), <<_EXPECT, 'test extract expansion');
 a
@@ -68,5 +70,12 @@ literal.c
 tac
 literal.xyz
 42
+fmap.id
+doc_id
+fmap.subject
+mysubject
+boost.abc
+3.5
+boost.xyz
+2
 _EXPECT
-
