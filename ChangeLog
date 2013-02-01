@@ -4,6 +4,14 @@
 All modifications are made by Mark Overmeer, unless explicitly stated
 differently.
 
+version 0.95: Fri Feb  1 16:47:38 CET 2013
+	Fixes:
+	- ::Result::selected() deep recursion.
+
+	Improvements:
+	- new ::Result::nextSelected()
+	- ::Result::selected() does not need the optional $solr object anymore
+
 version 0.94: Thu Jan 31 15:12:34 CET 2013
 	Fixes:
 	- extractDocument(string) did not work.

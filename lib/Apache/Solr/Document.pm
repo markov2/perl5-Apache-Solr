@@ -12,6 +12,9 @@ Apache::Solr::Document - Apache Solr (Lucene) Document container
 
   # create and upload a new document
   my $doc = Apache::Solr::Document->new(...);
+  $doc->addField(id => 'tic');
+  $doc->addFields( {name => 'tac', foot => 'toe'}, boost => 2);
+
   $solr->addDocument($doc, commit => 1, overwrite => 1)
 
   # take results
@@ -25,6 +28,7 @@ Apache::Solr::Document - Apache Solr (Lucene) Document container
 
   print $doc->uniqueId;             # usually the 'id' field
 
+  @names = $doc->fieldNames;
   print $doc->field('subject')->{content};
   print $doc->content('subject');   # same
   print $doc->_subject;             # same, via autoload (mind the '_'!)

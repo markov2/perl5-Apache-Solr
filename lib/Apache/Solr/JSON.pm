@@ -78,7 +78,7 @@ sub _select($)
 
     my $endpoint = $self->endpoint('select', params => \@params);
     my $result   = Apache::Solr::Result->new(params => \@params
-      , endpoint => $endpoint);
+      , endpoint => $endpoint, core => $self);
     $self->request($endpoint, $result);
 
     if(my $dec = $result->decoded)
@@ -94,7 +94,7 @@ sub _extract($$$)
     my @params   = (wt => 'json', @$params);
     my $endpoint = $self->endpoint('update/extract', params => \@params);
     my $result   = Apache::Solr::Result->new(params => \@params
-      , endpoint => $endpoint);
+      , endpoint => $endpoint, core => $self);
     $self->request($endpoint, $result, $data, $ct);
     $result;
 }
@@ -113,7 +113,7 @@ sub _add($$$)
       , params => \@params
       );
     my $result   = Apache::Solr::Result->new(params => \@params
-      , endpoint => $endpoint);
+      , endpoint => $endpoint, core => $self);
 
     # We cannot create HASHes with twice the same key in Perl, so cannot
     # produce the syntax for adding multiple documents.  Try to save it.
@@ -166,7 +166,7 @@ sub _terms($)
     my @params   = (wt => 'json', @$terms);
     my $endpoint = $self->endpoint('terms', params => \@params);
     my $result   = Apache::Solr::Result->new(params => \@params
-      , endpoint => $endpoint);
+      , endpoint => $endpoint, core => $self);
 
     $self->request($endpoint, $result);
 
@@ -229,7 +229,7 @@ sub simpleUpdate($$;$)
       , params => \@params
       );
     my $result   = Apache::Solr::Result->new(params => \@params
-      , endpoint => $endpoint);
+      , endpoint => $endpoint, core => $self);
 
     my %params   = (%$attrs
       , (!$content ? () : ref $content eq 'HASH' ? %$content : @$content));

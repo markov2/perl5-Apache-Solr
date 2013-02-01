@@ -58,9 +58,11 @@ use overload
 =option  response M<HTTP::Response> object
 =default response C<undef>
 
-=requires params ARRAY
+=requires params   ARRAY
 =requires endpoint URI
 
+=option  core M<Apache::Solr> object
+=default core C<undef>
 =cut
 
 sub new(@) { my $c = shift; (bless {}, $c)->init({@_}) }
@@ -73,8 +75,12 @@ sub init($)
     $self->request($args->{request});
     $self->response($args->{response});
 
-    $self->{ASR_pages} = [$self];
+    $self->{ASR_pages}    = [$self];
     weaken $self->{ASR_pages}[0];            # no reference loop!
+
+    if($self->{ASR_core} = $args->{core}) { weaken $self->{ASR_core} }
+    $self->{ASR_next}    = 0;
+
     $self;
 }
 
@@ -96,11 +102,14 @@ List of (expanded) parameters used to call the solr server.
 The URI where the request is sent to.
 =method elapse
 Number of seconds used to receive a decoded answer.
+=method core
+[0.95] May return the M<Apache::Solr> object which created this result.
 =cut
 
 sub start()    {shift->{ASR_start}}
 sub endpoint() {shift->{ASR_endpoint}}
 sub params()   {@{shift->{ASR_params}}}
+sub core()     {shift->{ASR_core}}
 
 sub request(;$) 
 {   my $self = shift;
@@ -211,6 +220,16 @@ sub errors()
 Returns the number of selected documents, as result of a
 M<Apache::Solr::select()> call.  Probably many of those documents are
 not loaded (yet).
+
+=examples
+  print $result->nrSelected, " results\n";
+
+  for(my $docnr = 0; $docnr < $result->nrSelected; $docnr++)
+  {   my $doc = $result->selected($docnr);
+      ...
+  }
+  # easier:
+  while(my $doc = $result->nextSelected) ...
 =cut
 
 sub nrSelected()
@@ -220,37 +239,37 @@ sub nrSelected()
     $results->{numFound};
 }
 
-=method selected RANK [,CLIENT]
+=method selected RANK
 Returns information about the query by M<Apache::Solr::select()> on
-position RANK.  Returned is a HASH, which can have fields 'doc' and 'hl'
-(maybe more later)
+position RANK (count starts at 0)  Returned is a M<Apache::Solr::Document>
+object.
 
-The first request will take a certain number of "rows".  If you pass
-the CLIENT, this routine will automatically collect more of the
-selected answers.
+The first request will take a certain number of "rows".  This routine
+will automatically collect more of the selected answers, when you address
+results outside the first "page" of "rows".  The results of these other
+requests are cached as well.
 
 =example
    my $r = $solr->select(rows => 10, ...);
-   $r or die;
+   $r or die $r->errors;
 
    if(my $last = $r->selected(9)) {...}
-
-   my $elf = $r->selected(11);         # error
-   my $elf = $r->selected(11, $solr);  # auto-collects more
+   my $elf = $r->selected(11);         # auto-request more
 =cut
 
 sub selected($;$)
 {   my ($self, $rank, $client) = @_;
-    my $dec    = $self->decoded;
-    my $result = $dec->{result}
-        or panic "there are no results (yet)";
+    my $dec      = $self->decoded;
+    my $result   = $dec->{result}
+        or panic __x"there are no results in the answer";
 
     # in this page?
-    if($rank <= $result->{start})
+    my $startnr  = $result->{start};
+    if($rank >= $startnr)
     {   my $docs = $result->{doc};
-        $docs    = [$docs] if ref $docs eq 'HASH';
-        if($rank - $result->{start} < @$docs)
-        {   my $doc = $docs->[$rank - $result->{start}];
+        $docs    = [$docs] if ref $docs eq 'HASH'; # when only one result
+        if($rank - $startnr < @$docs)
+        {   my $doc = $docs->[$rank - $startnr];
             return Apache::Solr::Document->fromResult($doc, $rank);
         }
     }
@@ -260,8 +279,24 @@ sub selected($;$)
  
     my $pagenr  = $self->selectedPageNr($rank);
     my $page    = $self->selectedPage($pagenr)
-               || $self->selectedPageLoad($pagenr, $client);
+               || $self->selectedPageLoad($pagenr, $self->core);
     $page->selected($rank);
+}
+
+=method nextSelected
+[0.95] Produces the next document, or C<undef> when all have been produced.
+
+=example
+  my $result = $solr->select(q => ...);
+  while(my $doc = $result->nextSelected)
+  {   my $hl = $result->highlighted($doc);
+  }
+=cut
+
+sub nextSelected()
+{   my $self = shift;
+    my $nr   = $self->{ASR_next}++;
+    $self->selected($nr);
 }
 
 =method highlighted DOCUMENT

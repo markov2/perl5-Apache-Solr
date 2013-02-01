@@ -32,11 +32,18 @@ Apache::Solr - Apache Solr (Lucene) extension
 
   my $doc     = Apache::Solr::Document->new(...);
   my $results = $solr->addDocument($doc);
-  $results or die $results->solrError;
+  $results or die $results->errors;
 
   my $results = $solr->select(q => 'author:mark');
   my $doc     = $results->selected(3);
   print $doc->_author;
+
+  my $results = $solr->select(q => "really", hl => {fl=>'content'});
+  while(my $doc = $results->nextSelected)
+  {   my $hldoc = $results->highlighted($doc);
+      print $hldoc->_content;
+      ...
+  }
 
   # based on Log::Report, hence (for communication errors and such)
   use Log::Report;
@@ -44,12 +51,9 @@ Apache::Solr - Apache Solr (Lucene) extension
   try { $solr->select(...) }; print $@->wasFatal;
 
 =chapter DESCRIPTION
-Solr is a stand-alone full-text search-engine, with loads of features.
-The main component is Lucene.  This module tries to provide a high
-level interface to the Solr server.
-
-B<BE WARNED>: this code is very new!  Please help me improve this code
-by sending bugs and suggesting improvements.
+Solr is a stand-alone full-text search-engine (based on Lucent), with
+loads of features.  This module tries to provide a high level interface
+to the Solr server.
 
 =chapter METHODS
 
@@ -534,7 +538,7 @@ sub _core_admin($@)
 
     my @params   = %$params;
     my $result   = Apache::Solr::Result->new(params => [ %$params ]
-      , endpoint => $endpoint);
+      , endpoint => $endpoint, core => $self);
 
     $self->request($endpoint, $result);
     $result;
