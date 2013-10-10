@@ -4,6 +4,10 @@
 All modifications are made by Mark Overmeer, unless explicitly stated
 differently.
 
+version 0.96: Thu Oct 10 15:42:25 CEST 2013
+	Improvements:
+	- adding a few new configuration fields, from 4.0.0 -> 4.5
+
 version 0.95: Fri Feb  1 16:47:38 CET 2013
 	Fixes:
 	- ::Result::selected() deep recursion.

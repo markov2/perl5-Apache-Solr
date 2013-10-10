@@ -14,7 +14,7 @@ use URI            ();
 use LWP::UserAgent ();
 use MIME::Types    ();
 
-use constant LATEST_SOLR_VERSION => '4.0';  # newest support by this module
+use constant LATEST_SOLR_VERSION => '4.5';  # newest support by this module
 
 # overrule this when your host has a different unique field
 our $uniqueKey  = 'id';
@@ -55,6 +55,7 @@ Solr is a stand-alone full-text search-engine (based on Lucent), with
 loads of features.  This module tries to provide a high level interface
 to the Solr server.
 
+See F<F<http://wiki.apache.org/solr/> and F<http://lucene.apache.org/solr/>
 =chapter METHODS
 
 =section Constructors
@@ -70,7 +71,7 @@ instantiated as such.
 
 =option  server_version VERSION
 =default server_version <latest>
-By default the latest version of the server software, currently 4.0.
+By default the latest version of the server software, currently 4.5.
 Try to get this setting right, because it will help you a lot in correct
 parameter use and support for the right features.
 
@@ -241,15 +242,15 @@ servers.  Currently, the resolution is milli-seconds.
 
 =option  allowDups BOOLEAN
 =default allowDups <false>
-[deprecated since Solr 1.1??]  Use option C<overwrite>.
+[removed since Solr 4.0]  Use option C<overwrite>.
 
 =option  overwritePending BOOLEAN
 =default overwritePending <not allowDups>
-[deprecated since Solr 1.1??]
+[removed since Solr 4.0]  Use option C<overwrite>.
 
 =option  overwriteCommitted BOOLEAN
 =default overwriteCommitted <not allowDups>
-[deprecated since Solr 1.1??]
+[removed since Solr 4.0]  Use option C<overwrite>.
 
 =cut
 
@@ -273,7 +274,8 @@ sub addDocument($%)
 
     foreach my $depr (qw/allowDups overwritePending overwriteCommitted/)
     {   if(exists $args{$depr})
-        {   if($sv ge '1.0') { $self->deprecated("add($depr)") }
+        {      if($sv ge '4.0') { $self->removed("add($depr)"); delete $args{$depr} }
+            elsif($sv ge '1.0') { $self->deprecated("add($depr)") }
             else { $attrs{$depr} = _to_bool delete $args{$depr} }
         }
     }
@@ -285,7 +287,7 @@ sub addDocument($%)
 
 =option  waitFlush BOOLEAN
 =default waitFlush <true>
-[before Solr 1.4]
+[before Solr 1.4, removed in 4.0]
 
 =option  waitSearcher BOOLEAN
 =default waitSearcher <true>
@@ -305,7 +307,9 @@ sub commit(%)
 
     my %attrs;
     if(exists $args{waitFlush})
-    {   if($sv ge '1.4') { $self->deprecated("commit(waitFlush)") }
+    {      if($sv ge '4.0')
+             { $self->removed("commit(waitFlush)"); delete $args{waitFlush} }
+        elsif($sv ge '1.4') { $self->deprecated("commit(waitFlush)") }
         else { $attrs{waitFlush} = _to_bool delete $args{waitFlush} }
     }
 
@@ -330,7 +334,7 @@ sub _commit($) {panic "not implemented"}
 
 =option  waitFlush BOOLEAN
 =default waitFlush <true>
-[before Solr 1.4]
+[before Solr 1.4, removed from 4.0]
 
 =option  waitSearcher BOOLEAN
 =default waitSearcher <true>
@@ -350,7 +354,9 @@ sub optimize(%)
 
     my %attrs;
     if(exists $args{waitFlush})
-    {   if($sv ge '1.4') { $self->deprecated("optimize(waitFlush)") }
+    {      if($sv ge '4.0')
+             { $self->removed("commit(waitFlush)"); delete $args{waitFlush} }
+        elsif($sv ge '1.4') { $self->deprecated("optimize(waitFlush)") }
         else { $attrs{waitFlush} = _to_bool delete $args{waitFlush} }
     }
 
@@ -819,6 +825,18 @@ sub ignored($)
     return if $self->{AS_ign_msg}{$msg}++;  # report only once
     warning __x"ignored solr {message}", message => $msg;
 }
+
+=method removed MESSAGE
+Produce a warning MESSAGE about parameters which will not be passed on,
+because they were removed from the indicated server version.
+=cut
+
+sub removed($)
+{   my ($self, $msg) = @_;
+    return if $self->{AS_rem_msg}{$msg}++;  # report only once
+    warning __x"removed solr {message}", message => $msg;
+}
+
 
 #------------------------
 =subsection Other helpers

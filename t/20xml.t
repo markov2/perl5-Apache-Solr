@@ -78,7 +78,7 @@ cmp_ok(scalar @{$r1->[1]}, '==', 2, 'each size 2');
 my $t2 = $solr->select(q => 'text:tic', hl => {fl => 'content'});
 #warn Dumper $t2->decoded;
 isa_ok($t2, 'Apache::Solr::Result');
-ok($t2, 'select was successfull');
+ok($t2, 'select was successful');
 is($t2->endpoint, "$server/select?wt=$format&q=text%3Atic&hl=true&hl.fl=content");
 
 cmp_ok($t2->nrSelected, '==', 1);

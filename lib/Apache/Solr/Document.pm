@@ -181,6 +181,10 @@ the field gets ignored.
 
 =option  boost FLOAT
 =default boost C<1.0>
+
+=option  update 'add'|'set'|'inc'
+=default C<undef>
+[0.96, Solr 4.0]
 =cut
 
 sub addField($$%)
@@ -194,7 +198,8 @@ sub addField($$%)
                    )
       };
     my %args  = @_;
-    $field->{boost} = $args{boost} || 1.0;
+    $field->{boost}  = $args{boost} || 1.0;
+    $field->{update} = $args{update};
 
     push @{$self->{ASD_fields}}, $field;
     push @{$self->{ASD_fields_h}{$name}}, $field;
