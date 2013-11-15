@@ -21,7 +21,12 @@ our $uniqueKey  = 'id';
 my  $mimetypes  = MIME::Types->new;
 my  $http_agent;
 
-sub _to_bool($) {$_[0] && $_[0] ne 'false' && $_[0] ne 'off' ? 'true' : 'false'}
+sub _to_bool($)
+{  my $b = shift;
+     !defined $b ? undef
+   : ($b && $b ne 'false' && $b ne 'off') ? 'true' 
+   : 'false';
+}
 
 =chapter NAME
 Apache::Solr - Apache Solr (Lucene) extension
@@ -680,7 +685,8 @@ are fields you add yourself to the SolrCEL output.  Unless C<extractOnly>,
 you need to specify the 'id' literal.
 
 [0.94] You can also use C<fmap>, C<boost>, and C<resource> with an
-HASH (or ARRAY-of-PAIRS).
+HASH (or ARRAY-of-PAIRS).  [0.97] the value in each PAIR may be a SCALAR
+(ref string) which circumvents some copying.
 
 =example
   my $result = $solr->extractDocument(string => $document
@@ -706,7 +712,7 @@ sub expandExtract(@)
     my @s;
     while(@p)
     {   my ($k, $v) = (shift @p, shift @p);
-        if(!ref $v)
+        if(!ref $v || ref $v eq 'SCALAR')
              { push @s, $k => $v }
         elsif($k eq 'literal' || $k eq 'literals')
              { push @s, $self->_expand_flatten($v, 'literal.') }

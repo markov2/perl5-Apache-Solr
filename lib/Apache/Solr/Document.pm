@@ -183,13 +183,15 @@ the field gets ignored.
 =default boost C<1.0>
 
 =option  update 'add'|'set'|'inc'
-=default C<undef>
+=default update C<undef>
 [0.96, Solr 4.0]
 =cut
 
 sub addField($$%)
 {   my $self  = shift;
     my $name  = shift;
+    defined $_[0] or return;
+
     my $field =     # important to minimalize copying of content
       { name    => $name
       , content => ( !ref $_[0]            ? shift
@@ -222,6 +224,7 @@ sub addFields($%)
     else
     {   $self->addField($_ => \$h->{$_}, @args) for sort keys %$h;
     }
+    $self;
 }
 
 #--------------------------

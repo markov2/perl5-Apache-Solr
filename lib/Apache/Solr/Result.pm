@@ -266,7 +266,7 @@ sub selected($;$)
     # in this page?
     my $startnr  = $result->{start};
     if($rank >= $startnr)
-    {   my $docs = $result->{doc};
+    {   my $docs = $result->{doc} || [];
         $docs    = [$docs] if ref $docs eq 'HASH'; # when only one result
         if($rank - $startnr < @$docs)
         {   my $doc = $docs->[$rank - $startnr];
