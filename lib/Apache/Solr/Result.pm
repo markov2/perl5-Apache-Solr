@@ -315,11 +315,9 @@ sub highlighted($)
 #--------------------------
 =subsection in response to a queryTerms()
 
-=method terms FIELD [, TERMS]
+=method terms FIELD, [TERMS]
 Returns the results of a 'terms' query (see M<Apache::Solr::queryTerms()>),
-which is a HASH.
-
-When TERMS are specified, a new table is set.
+which is a HASH.  When TERMS are specified, a new table is set.
 
 In Solr XML (at least upto v4.0) the results are presented as lst, not arr
 So: their sort order is lost.

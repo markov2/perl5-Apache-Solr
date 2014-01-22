@@ -163,9 +163,9 @@ sub autocommit(;$)
 sub agent()  {shift->{AS_agent}}
 sub serverVersion() {shift->{AS_sversion}}
 
-=method server [URI|STRING]
+=method server [$uri|STRING]
 Returns the M<URI> object which refers to the server base address.  You need
-to clone() it before modifying.  You may set a new value as STRING or C<URI>
+to clone() it before modifying.  You may set a new value as STRING or C<$uri>
 object.
 =cut
 
@@ -230,7 +230,7 @@ sub _terms(@) {panic "not implemented"}
 See F<http://wiki.apache.org/solr/UpdateXmlMessages>.  Missing are the
 atomic updates.
 
-=method addDocument DOC|ARRAY, OPTIONS
+=method addDocument <DOC|ARRAY>, OPTIONS
 Add one or more documents (M<Apache::Solr::Document> objects) to the Solr
 database on the server.
 
@@ -498,7 +498,8 @@ sub extractDocument(@)
     my %p     = $self->expandExtract(@_);
     my $data;
 
-    my $ct    = delete $p{content_type};
+    # expand* changes '_' into '.'
+    my $ct    = delete $p{'content.type'};
     my $fn    = delete $p{file};
     $p{'resource.name'} ||= $fn if $fn && !ref $fn;
 
@@ -507,19 +508,21 @@ sub extractDocument(@)
 
     if(defined $p{string})
     {   # try to avoid copying the data, which can be huge
-        $data = ref $p{string} eq 'SCALAR'
-              ? encode(utf8 => ${$p{string}})
-              : encode(utf8 => $p{string});
+        $data = $ct =~ m!^text/!i
+              ? \encode(utf8 =>
+                (ref $p{string} eq 'SCALAR' ? ${$p{string}} : $p{string}))
+              : (ref $p{string} eq 'SCALAR' ? $p{string} : \$p{string} );
+
         delete $p{string};
     }
     elsif($fn)
     {   local $/;
-        if(ref $fn eq 'GLOB') { $data = <$fn> }
+        if(ref $fn eq 'GLOB') { $data = \<$fn> }
         else
         {   local *IN;
             open IN, '<:raw', $fn
                 or fault __x"cannot read document from {fn}", fn => $fn;
-            $data = <IN>;
+            $data = \<IN>;
             close IN
                 or fault __x"read error for document {fn}", fn => $fn;
             $ct ||= $mimetypes->mimeTypeOf($fn);
@@ -529,7 +532,7 @@ sub extractDocument(@)
     {   error __x"extract requires document as file or string";
     }
 
-    $self->_extract([%p], \$data, $ct);
+    $self->_extract([%p], $data, $ct);
 }
 sub _extract($){panic "not implemented"}
 
@@ -594,7 +597,7 @@ sub coreReload(%)
     $self->_core_admin('RELOAD', \%args);
 }
 
-=method coreUnload [OPTIONS]
+=method coreUnload OPTIONS
 Removes a core from Solr. Active requests will continue to be processed, but no new requests will be sent to the named core. If a core is registered under more than one name, only the given name is removed.
 
 =option  core NAME
