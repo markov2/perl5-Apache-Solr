@@ -38,7 +38,7 @@ to match the XML.
 =chapter METHODS
 =section Constructors
 
-=c_method new OPTIONS
+=c_method new %options
 =default format 'JSON'
 
 =option  json M<JSON> object
@@ -57,7 +57,7 @@ sub init($)
 
 #---------------
 =section Accessors
-=method json
+=method json 
 =cut
 
 sub json() {shift->{ASJ_json}}
@@ -213,7 +213,7 @@ sub request($$;$$)
     $result;
 }
 
-=method simpleUpdate  COMMAND, ATTRIBUTES, [CONTENT]
+=method simpleUpdate $command, $attributes, [$content]
 =cut
 
 sub simpleUpdate($$;$)
@@ -238,7 +238,7 @@ sub simpleUpdate($$;$)
     $result;
 }
 
-=method simpleDocument COMMAND, [ATTRIBUTES, [CONTENT]]
+=method simpleDocument $command, [$attributes, [$content]]
 Construct a simple XML structure.
 =cut
 

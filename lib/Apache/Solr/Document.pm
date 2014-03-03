@@ -45,7 +45,7 @@ by M<Apache::Solr::select()>.
 =chapter METHODS
 =section Constructors
 
-=c_method new OPTIONS
+=c_method new %options
 
 =option  fields HASH|ARRAY
 =default fields {}
@@ -67,7 +67,7 @@ sub init($)
     $self;
 }
 
-=c_method fromResult HASH, RANK
+=c_method fromResult HASH, $rank
 Create a document object from data received as result of a select
 search.
 =cut
@@ -93,14 +93,14 @@ sub fromResult($$)
 #---------------
 =section Accessors
 
-=method boost [FIELDNAME, [BOOST]]
+=method boost [$fieldname, [$boost]]
 Boost value for all fields in the document.
 
 [0.93] When a FIELD NAME is given, the boost specific for that field is
 returned (not looking at the document's boost value)  This can also be
-used to set the BOOST value for the field.
+used to set the $boost value for the field.
 
-=method fieldNames
+=method fieldNames 
 All used unique names.
 =cut
 
@@ -113,7 +113,7 @@ sub boost(;$)
 
 sub fieldNames() { my %c; $c{$_->{name}}++ for shift->fields; sort keys %c }
 
-=method uniqueId
+=method uniqueId 
 Returns the value of the unique key associated with the document C<id>.  Only
 the server knowns which field is the unique one.  If it differs from the
 usual C<id>, you have to set it via global value C<$Apache::Solr::uniqueKey>
@@ -121,16 +121,16 @@ usual C<id>, you have to set it via global value C<$Apache::Solr::uniqueKey>
 
 sub uniqueId() {shift->content($Apache::Solr::uniqueKey)}
 
-=method rank
+=method rank 
 Only defined when the document contains results of a search: the ranking.
 A value of '0' means "best".
 =cut
 
 sub rank() {shift->{ASD_rank}}
 
-=method fields [NAME]
+=method fields [$name]
 Returns a list of HASHs, each containing at least a C<name> and a
-C<content>.  Each HASH will also contain a C<boost> value.  When a NAME
+C<content>.  Each HASH will also contain a C<boost> value.  When a $name
 is provided, only those fields are returned.
 =cut
 
@@ -143,8 +143,8 @@ sub fields(;$)
     $fh ? @$fh : ();
 }
 
-=method field NAME
-Returns the first field with NAME (or undef).  This is a HASH, containing
+=method field $name
+Returns the first field with $name (or undef).  This is a HASH, containing
 C<name>, C<content> and sometimes a C<boost> key.
 
 If you need the content (that's the usually the case), you can also
@@ -162,8 +162,8 @@ sub field($)
     $fh ? $fh->[0] : undef;
 }
 
-=method content NAME
-Returns the content of the first field with NAME.
+=method content $name
+Returns the content of the first field with $name.
 =cut
 
 sub content($) { my $f = $_[0]->field($_[1]); $f ? $f->{content} : undef }
@@ -174,8 +174,8 @@ sub AUTOLOAD
     shift->content($fn);
 }
 
-=method addField NAME, CONTENT, OPTIONS
-CONTENT can be specified as SCALAR (reference) for performance. In
+=method addField $name, $content, %options
+$content can be specified as SCALAR (reference) for performance. In
 that case, a reference to the original will be kept.  When C<undef>,
 the field gets ignored.
 
@@ -208,9 +208,9 @@ sub addField($$%)
     $field;
 }
 
-=method addFields HASH|ARRAY, OPTIONS
+=method addFields HASH|ARRAY, %options
 The HASH or ARRAY containing NAME/CONTENT pairs.
-The OPTIONS are passed M<addField()> as OPTIONS.
+The %options are passed M<addField()> as %options.
 =cut
 
 sub addFields($%)

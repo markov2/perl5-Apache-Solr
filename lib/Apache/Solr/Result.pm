@@ -40,7 +40,7 @@ Apache::Solr::Result - Apache Solr (Lucene) result container
 =chapter DESCRIPTION
 
 =chapter OVERLOADING
-=overload stringification
+=overload stringification 
 =cut
 
 use overload
@@ -51,7 +51,7 @@ use overload
 =chapter METHODS
 =section Constructors
 
-=c_method new OPTIONS
+=c_method new %options
 =option  request M<HTTP::Request> object
 =default request C<undef>
 
@@ -89,20 +89,20 @@ sub _pageset($) { $_[0]->{ASR_pages} = $_[1] }
 
 #---------------
 =section Accessors
-=method start
+=method start 
 The timestamp of the moment the call has started, including the creation of
 the message to be sent.
-=method params
+=method params 
 List of (expanded) parameters used to call the solr server.
-=method endpoint
-=method request [REQUEST]
-=method response [RESPONSE]
+=method endpoint 
+=method request [$request]
+=method response [$response]
 =method decoded [HASH]
-=method endpoint
+=method endpoint 
 The URI where the request is sent to.
-=method elapse
+=method elapse 
 Number of seconds used to receive a decoded answer.
-=method core
+=method core 
 [0.95] May return the M<Apache::Solr> object which created this result.
 =cut
 
@@ -138,7 +138,7 @@ sub elapse()
     $done = $self->{ASR_start};
 }
 
-=method success
+=method success 
 Returns true if the command has successfully completed.  
 =examples
    my $result = $sorl->commit;
@@ -149,12 +149,12 @@ Returns true if the command has successfully completed.
 
 sub success() { my $s = shift; $s->{ASR_success} ||= $s->solrStatus==0 }
 
-=method solrStatus
-=method solrQTime
+=method solrStatus 
+=method solrQTime 
 Elapse (as reported by the server) to handle the request.  In seconds!
-=method solrError
-=method serverError
-=method httpError
+=method solrError 
+=method serverError 
+=method httpError 
 =cut
 
 sub solrStatus()
@@ -195,7 +195,7 @@ sub serverError()
     $body;
 }
 
-=method errors
+=method errors 
 All errors collected by this object into one string.
 =cut
 
@@ -216,7 +216,7 @@ sub errors()
 
 =subsection in response to a select()
 
-=method nrSelected
+=method nrSelected 
 Returns the number of selected documents, as result of a
 M<Apache::Solr::select()> call.  Probably many of those documents are
 not loaded (yet).
@@ -239,9 +239,9 @@ sub nrSelected()
     $results->{numFound};
 }
 
-=method selected RANK
+=method selected $rank
 Returns information about the query by M<Apache::Solr::select()> on
-position RANK (count starts at 0)  Returned is a M<Apache::Solr::Document>
+position $rank (count starts at 0)  Returned is a M<Apache::Solr::Document>
 object.
 
 The first request will take a certain number of "rows".  This routine
@@ -283,7 +283,7 @@ sub selected($;$)
     $page->selected($rank);
 }
 
-=method nextSelected
+=method nextSelected 
 [0.95] Produces the next document, or C<undef> when all have been produced.
 
 =example
@@ -299,8 +299,8 @@ sub nextSelected()
     $self->selected($nr);
 }
 
-=method highlighted DOCUMENT
-Return information which relates to the selected DOCUMENT.
+=method highlighted $document
+Return information which relates to the selected $document.
 =cut
 
 sub highlighted($)
@@ -315,9 +315,9 @@ sub highlighted($)
 #--------------------------
 =subsection in response to a queryTerms()
 
-=method terms FIELD, [TERMS]
+=method terms $field, [$terms]
 Returns the results of a 'terms' query (see M<Apache::Solr::queryTerms()>),
-which is a HASH.  When TERMS are specified, a new table is set.
+which is a HASH.  When $terms are specified, a new table is set.
 
 In Solr XML (at least upto v4.0) the results are presented as lst, not arr
 So: their sort order is lost.
@@ -338,8 +338,8 @@ sub terms($;$)
 #--------------------------
 =section Helpers
 
-=method showTimings [FILEHANDLE]
-Print timing informat to the FILEHANDLE, by default the selected
+=method showTimings [$fh]
+Print timing informat to the $fh, by default the selected
 file-handle (probably STDOUT).
 =cut
 
@@ -383,10 +383,10 @@ sub showTimings(;$)
     }
 }
 
-=method selectedPageNr RANK
-=method selectedPages
-=method selectedPage PAGENR
-=method selectedPageSize
+=method selectedPageNr $rank
+=method selectedPages 
+=method selectedPage $pagenr
+=method selectedPageSize 
 =cut
 
 sub selectedPageNr($) { my $pz = shift->selectedPageSize; int(shift() / $pz) }
@@ -398,7 +398,7 @@ sub selectedPageSize()
     ref $docs eq 'HASH'  ? 1 : ref $docs eq 'ARRAY' ? scalar @$docs : 50;
 }
 
-=method selectedPageLoad RANK, CLIENT
+=method selectedPageLoad $rank, $client
 =cut
 
 sub selectedPageLoad($;$)
@@ -419,7 +419,7 @@ sub selectedPageLoad($;$)
     $self->{ASR_pages}[$pagenr] = $page;
 }
 
-=method replaceParams HASH, OLDPARAMS
+=method replaceParams HASH, $oldparams
 =cut
 
 sub replaceParams($@)

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Test decoding the complex Facet structure.
 # Try all examples from http://wiki.apache.org/solr/SimpleFacetParameters
 
@@ -378,7 +378,7 @@ my $d7 =  {
         '2007-08-12T00:00:00.000Z' => '5',
         '2007-08-14T00:00:00.000Z' => '7',
         '2007-08-16T00:00:00.000Z' => '16',
-        date => { name => 'end', _ => '2007-08-17T00:00:00Z' },
+        end => '2007-08-17T00:00:00Z',
         gap => '+1DAY'
       }
     },

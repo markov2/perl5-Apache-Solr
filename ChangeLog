@@ -4,15 +4,23 @@
 All modifications are made by Mark Overmeer, unless explicitly stated
 differently.
 
+version 0.99: Mon Mar  3 10:27:02 CET 2014
+
+	Changes:
+	- ::XML add basic field types date, text, and double.  Their
+	  values are now included in the HASH by name, not by type.
+	  So, date => { name => 'xyz', _ => $ts } becomes  xyz => $ts
+	  [Andrew Beverley]
+
+	Improvements:
+	- change documentation style
+
 version 0.98: Wed Jan 22 17:00:02 CET 2014
 
 	Fixes:
 	- extractDocument(content_type) [Andrew Beverley]
 	- extractDocument character encoding on text [Andrew Beverley]
 	- extractDocument more use of ref on data.
-
-	Improvements:
-	- change documentation style
 
 version 0.97: Fri Nov 15 15:11:30 CET 2013
 

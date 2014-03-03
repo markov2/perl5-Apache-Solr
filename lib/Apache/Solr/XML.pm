@@ -40,7 +40,7 @@ This module uses M<XML::LibXML> to parse and construct XML.
 =chapter METHODS
 =section Constructors
 
-=c_method new OPTIONS
+=c_method new %options
 Creates a new object.  You may have objects shared the same
 M<LWP::UserAgent> object, to share connections.
 
@@ -59,7 +59,7 @@ sub init($)
 
 #---------------
 =section Accessors
-=method xmlsimple
+=method xmlsimple 
 =cut
 sub xmlsimple() {shift->{ASX_simple}}
 
@@ -209,7 +209,8 @@ sub _cleanup_parsed($)
             }
         }
 
-        foreach my $type (qw/int long str float bool/)
+        # XXX haven't found a clear list of what can be expected here
+        foreach my $type (qw/int long float double bool date str text/)
         {   my $items = delete $d{$type} or next;
             foreach (ref $items eq 'ARRAY' ? @$items : $items)
             {   my ($name, $value)
@@ -228,10 +229,13 @@ sub _cleanup_parsed($)
     elsif(ref $data eq 'ARRAY')
     {   return [ map _cleanup_parsed($_), @$data ];
     }
-    else {panic $data}
+    elsif(ref $data eq 'DateTime')
+    {   return $data;
+    }
+    else {panic ref $data || $data}
 }
 
-=method simpleUpdate COMMAND, ATTRIBUTES, [CONTENT]
+=method simpleUpdate $command, $attributes, [$content]
 =cut
 
 sub simpleUpdate($$;$)
@@ -247,7 +251,7 @@ sub simpleUpdate($$;$)
     $result;
 }
 
-=method simpleDocument COMMAND, [ATTRIBUTES, [CONTENT]]
+=method simpleDocument $command, [$attributes, [$content]]
 Construct a simple XML structure.
 =cut
 

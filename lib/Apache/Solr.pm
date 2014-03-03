@@ -65,7 +65,7 @@ See F<F<http://wiki.apache.org/solr/> and F<http://lucene.apache.org/solr/>
 
 =section Constructors
 
-=c_method new OPTIONS
+=c_method new %options
 Create a client to connect to one "core" (collection) of the Solr
 server.
 
@@ -142,17 +142,17 @@ sub init($)
 #---------------
 =section Accessors
 
-=method core [CORE]
-Returns the CORE, when not defined the default core as set by M<new(core)>.
+=method core [$core]
+Returns the $core, when not defined the default core as set by M<new(core)>.
 May return C<undef>.
 
 =method autocommit [BOOLEAN]
 
-=method agent
+=method agent 
 Returns the M<LWP::UserAgent> object which maintains the connection to
 the server.
 
-=method serverVersion
+=method serverVersion 
 Returns the specified version of the Solr server software (by default the
 latest).  Treat this version as string, to avoid rounding errors.
 =cut
@@ -182,7 +182,7 @@ sub server(;$)
 
 =subsection Search
 
-=method select PARAMETERS
+=method select $parameters
 Find information in the document collection.
 
 This method has a HUGE number of parameters.  These values are passed in
@@ -198,10 +198,10 @@ sub select(@)
 }
 sub _select(@) {panic "not extended"}
 
-=method queryTerms TERMS
+=method queryTerms $terms
 Search for often used terms. See F<http://wiki.apache.org/solr/TermsComponent>
 
-TERMS are passed to M<expandTerms()> before being used.
+$terms are passed to M<expandTerms()> before being used.
 
 B<Be warned:> The result is not sorted when XML communication is used,
 even when you explicitly request it.
@@ -230,7 +230,7 @@ sub _terms(@) {panic "not implemented"}
 See F<http://wiki.apache.org/solr/UpdateXmlMessages>.  Missing are the
 atomic updates.
 
-=method addDocument <DOC|ARRAY>, OPTIONS
+=method addDocument <$doc|ARRAY>, %options
 Add one or more documents (M<Apache::Solr::Document> objects) to the Solr
 database on the server.
 
@@ -288,7 +288,7 @@ sub addDocument($%)
     $self->_add($docs, \%attrs, \%params);
 }
 
-=method commit OPTIONS
+=method commit %options
 
 =option  waitFlush BOOLEAN
 =default waitFlush <true>
@@ -335,7 +335,7 @@ sub commit(%)
 }
 sub _commit($) {panic "not implemented"}
 
-=method optimize OPTIONS
+=method optimize %options
 
 =option  waitFlush BOOLEAN
 =default waitFlush <true>
@@ -382,7 +382,7 @@ sub optimize(%)
 }
 sub _optimize($) {panic "not implemented"}
 
-=method delete OPTIONS
+=method delete %options
 Remove one or more documents, based on id or query.
 
 =option  commit BOOLEAN
@@ -445,7 +445,7 @@ sub delete(%)
 }
 sub _delete(@) {panic "not implemented"}
 
-=method rollback
+=method rollback 
 [solr 1.4]
 =cut
 
@@ -457,12 +457,12 @@ sub rollback()
     $self->_rollback;
 }
 
-=method extractDocument OPTIONS
+=method extractDocument %options
 Call the Solr Tika built-in to have the server translate various
 kinds of structured documents into Solr searchable documents.  This
 component is also called "Solr Cell".
 
-The OPTIONS are mostly passed on as attributes to the server call,
+The %options are mostly passed on as attributes to the server call,
 but there are a few more.  You need to pass either a C<file> or
 C<string> with data.
 
@@ -558,7 +558,7 @@ sub _core_admin($@)
     $result;
 }
 
-=method coreStatus
+=method coreStatus 
 [0.94] Returns a HASH with information about this core.  There is no
 description about the exact structure and interpretation of this data.
 
@@ -578,7 +578,7 @@ sub coreStatus(%)
     $self->_core_admin('STATUS', \%args);
 }
 
-=method coreReload [CORE]
+=method coreReload [$core]
 [0.94] Load a new core (on the server) from the configuration of this
 core. While the new core is initializing, the existing one will continue
 to handle requests. When the new Solr core is ready, it takes over and
@@ -597,7 +597,7 @@ sub coreReload(%)
     $self->_core_admin('RELOAD', \%args);
 }
 
-=method coreUnload OPTIONS
+=method coreUnload %options
 Removes a core from Solr. Active requests will continue to be processed, but no new requests will be sent to the named core. If a core is registered under more than one name, only the given name is removed.
 
 =option  core NAME
@@ -813,8 +813,8 @@ sub expandSelect(@)
     wantarray ? @s : \@s;
 }
 
-=method deprecated MESSAGE
-Produce a warning MESSAGE about deprecated parameters with the
+=method deprecated $message
+Produce a warning $message about deprecated parameters with the
 indicated server version.
 =cut
 
@@ -824,8 +824,8 @@ sub deprecated($)
     warning __x"deprecated solr {message}", message => $msg;
 }
 
-=method ignored MESSAGE
-Produce a warning MESSAGE about parameters which will get ignored
+=method ignored $message
+Produce a warning $message about parameters which will get ignored
 because they were not yet supported by the indicated server version.
 =cut
 
@@ -835,8 +835,8 @@ sub ignored($)
     warning __x"ignored solr {message}", message => $msg;
 }
 
-=method removed MESSAGE
-Produce a warning MESSAGE about parameters which will not be passed on,
+=method removed $message
+Produce a warning $message about parameters which will not be passed on,
 because they were removed from the indicated server version.
 =cut
 
@@ -850,7 +850,7 @@ sub removed($)
 #------------------------
 =subsection Other helpers
 
-=method endpoint ACTION, OPTIONS
+=method endpoint $action, %options
 Compute the address to be called (for HTTP)
 
 =option  core NAME
