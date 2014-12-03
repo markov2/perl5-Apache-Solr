@@ -4,6 +4,12 @@
 All modifications are made by Mark Overmeer, unless explicitly stated
 differently.
 
+version 1.00: Wed Dec  3 17:48:07 CET 2014
+
+	Changes:
+	- understand and simplify response/docs structure, results of
+	  facet'd queries.  rt.cpan.org#100662 [Douglas Early]
+
 version 0.99: Mon Mar  3 10:27:02 CET 2014
 
 	Changes:
