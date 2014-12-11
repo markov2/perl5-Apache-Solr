@@ -264,7 +264,7 @@ requests are cached as well.
 
 sub selected($;$)
 {   my ($self, $rank, $client) = @_;
-    my $result   = $self->_getResult
+    my $result   = $self->_getResults
         or panic __x"there are no results in the answer";
 
     # in this page?
