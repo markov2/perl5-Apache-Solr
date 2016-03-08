@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile
   ( NAME        => 'Apache::Solr'
-  , VERSION     => '1.01'
+  , VERSION     => '1.02'
   , PREREQ_PM   =>
      { Data::Dumper	=> 0
      , Encode           => 0

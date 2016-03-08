@@ -143,10 +143,18 @@ sub _doc2json($)
     foreach my $fieldname ($this->fieldNames)
     {   my @f;
         foreach my $field ($this->fields($fieldname))
-        {   # put boosted fields in a HASH
-            push @f, $field->{boost} && $field->{boost}!=1.0
-                   ? +{boost => $field->{boost}, value => $field->{content}}
-                   : $field->{content};
+        {   my $update = $field->{update} || 'value';
+            my $boost  = $field->{boost}  || 1.0;
+
+            undef $boost
+                if $boost > 0.9999 && $boost < 1.0001;
+
+            push @f
+              , ! defined $boost && $update eq 'value'
+              ? $field->{content}
+              : defined $boost
+              ? +{ boost => $boost, $update => $field->{content} }
+              : +{ $update => $field->{content} };
         }
         # we have to combine multi-fields into ARRAYS
         $doc{$fieldname} = @f > 1 ? \@f : $f[0];

@@ -153,7 +153,7 @@ field with a leading '_'.
 
 =examples
    $doc->field('subject')->{content};
-   $doc->content('subject);
+   $doc->content('subject');
    $doc->_subject;
 =cut
 
@@ -166,7 +166,10 @@ sub field($)
 Returns the content of the first field with $name.
 =cut
 
-sub content($) { my $f = $_[0]->field($_[1]); $f ? $f->{content} : undef }
+sub content($)
+{   my $f = $_[0]->field($_[1]);
+    $f ? $f->{content} : undef;
+}
 
 our $AUTOLOAD;
 sub AUTOLOAD
@@ -182,9 +185,11 @@ the field gets ignored.
 =option  boost FLOAT
 =default boost C<1.0>
 
-=option  update 'add'|'set'|'inc'
+=option  update 'add'|'set'|'inc'|...
 =default update C<undef>
-[0.96, Solr 4.0]
+[1.02, Solr 4.0]  See 'Atomic Updates' in
+F<https://cwiki.apache.org/confluence/display/solr/Updating+Parts+of+Documents>
+
 =cut
 
 sub addField($$%)

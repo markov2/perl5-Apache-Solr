@@ -125,8 +125,14 @@ sub _doc2xml($$$)
     foreach my $field ($this->fields)
     {   my $fnode = $doc->createElement('field');
         $fnode->setAttribute(name => $field->{name});
+
         my $boost = $field->{boost} || 1.0;
-        $fnode->setAttribute(boost => $boost) if $boost != 1.0;
+        $fnode->setAttribute(boost => $boost)
+            if $boost < 0.9999 || $boost > 1.0001;
+
+        $fnode->setAttribute(update => $field->{update})
+            if defined $field->{update};
+
         $fnode->appendText($field->{content});
         $node->addChild($fnode);
     }
