@@ -766,7 +766,8 @@ You may use M<WebService::Solr::Query> to construct the query ('q').
 
 =cut
 
-my %sets =   #also-per-field?  (probably more config later)
+# probably more config later, currently only one column
+my %sets =   #also-per-field?
   ( facet => [1]
   , hl    => [1]
   , mlt   => [0]
@@ -789,9 +790,10 @@ sub expandSelect(@)
 
         if(my $def = $sets{$set})
         {   $seen_set{$set} = 1;
-            $def->[0]
+            !$per_field || $def->[0]
                or error __x"set {set} cannot be used per field, in {field}"
                     , set => $set, field => $k;
+
             if(ref $v eq 'HASH')
             {   !$more
                     or error __x"field {field} is not simple for a set", field => $k;

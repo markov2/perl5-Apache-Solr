@@ -4,6 +4,12 @@
 All modifications are made by Mark Overmeer, unless explicitly stated
 differently.
 
+version 1.03:
+
+	Fixes:
+	- expandSelect() over-eager to protect generic configuration
+	  flags to be used as specific field flags.  [Mark Elrod]
+
 version 1.02: Tue Mar  8 19:47:39 CET 2016
 
 	Fixes:

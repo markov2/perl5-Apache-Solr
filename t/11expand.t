@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Test various kinds of parameter expansion
 
 use warnings;
@@ -7,7 +7,7 @@ use strict;
 use lib 'lib';
 use Apache::Solr;
 
-use Test::More tests => 4;
+use Test::More tests => 5;
 
 # the server will not be called in this script.
 my $server = 'http://localhost:8080/solr';
@@ -78,4 +78,57 @@ boost.abc
 3.5
 boost.xyz
 2
+_EXPECT
+
+### expandSelect
+
+my @t3 = $solr->expandSelect
+  ( q => 'inStock:true', rows => 10
+  , facet => {limit => -1, field => [qw/cat inStock/], mincount => 1}
+  , f_cat_facet => {missing => 1}
+  , hl    => {}
+  , mlt   => { fl => 'manu,cat', mindf => 1, mintf => 1 }
+  , stats => { field => [ 'price', 'popularity' ] }
+  , group => { query => 'price:[0 TO 99.99]', limit => 3 }
+  );
+
+is(join("\n",@t3,''), <<_EXPECT, 'test select expansion');
+q
+inStock:true
+rows
+10
+mlt
+true
+hl
+true
+group
+true
+stats
+true
+facet
+true
+facet.limit
+-1
+facet.mincount
+1
+facet.field
+cat
+facet.field
+inStock
+f.cat.facet.missing
+true
+mlt.fl
+manu,cat
+mlt.mintf
+1
+mlt.mindf
+1
+stats.field
+price
+stats.field
+popularity
+group.query
+price:[0 TO 99.99]
+group.limit
+3
 _EXPECT
