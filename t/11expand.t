@@ -92,43 +92,31 @@ my @t3 = $solr->expandSelect
   , group => { query => 'price:[0 TO 99.99]', limit => 3 }
   );
 
-is(join("\n",@t3,''), <<_EXPECT, 'test select expansion');
-q
-inStock:true
-rows
-10
-mlt
-true
-hl
-true
-group
-true
-stats
-true
-facet
-true
-facet.limit
--1
-facet.mincount
-1
-facet.field
-cat
-facet.field
-inStock
-f.cat.facet.missing
-true
-mlt.fl
-manu,cat
-mlt.mintf
-1
-mlt.mindf
-1
-stats.field
-price
-stats.field
-popularity
-group.query
-price:[0 TO 99.99]
-group.limit
-3
+my @t3b;
+while(@t3)
+{   push @t3b, (shift @t3) . ' ' . (shift @t3) . "\n";
+}
+
+my @e3 = split /(?<=\n)/, <<_EXPECT;
+q inStock:true
+rows 10
+mlt true
+hl true
+group true
+stats true
+facet true
+facet.limit -1
+facet.mincount 1
+facet.field cat
+facet.field inStock
+f.cat.facet.missing true
+mlt.fl manu,cat
+mlt.mintf 1
+mlt.mindf 1
+stats.field price
+stats.field popularity
+group.query price:[0 TO 99.99]
+group.limit 3
 _EXPECT
+
+is(join('', sort @t3b), join('', sort @e3), 'test select expansion');
