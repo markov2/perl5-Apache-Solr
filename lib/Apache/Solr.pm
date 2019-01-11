@@ -1,3 +1,7 @@
+# This code is part of distribution Apache-Solr.  Meta-POD processed with
+# OODoc into POD and HTML manual-pages.  See README.md
+# Copyright Mark Overmeer.  Licensed under the same terms as Perl itself.
+
 package Apache::Solr;
 
 use warnings;
@@ -33,6 +37,7 @@ Apache::Solr - Apache Solr (Lucene) extension
 
 =chapter SYNOPSIS
 
+  # use Log::Report mode => "DEBUG";
   my $solr    = Apache::Solr->new(server => $url);
 
   my $doc     = Apache::Solr::Document->new(...);
