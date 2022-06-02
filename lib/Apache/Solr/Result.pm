@@ -5,6 +5,8 @@
 package Apache::Solr::Result;
 
 use warnings;
+no warnings 'recursion';  # linked list of pages can get deep
+
 use strict;
 
 use Log::Report    qw(solr);
