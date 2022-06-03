@@ -9,6 +9,8 @@ version 1.06:
 	Fixes:
 	- do no warn for long lists of pages, deep recursion.
 	  Detected by [Andy Beverley]
+	- search with 'start' does not work with nextSelected()
+	  Fixed by [Andy Beverley]
 
 version 1.05: Fri 11 Jan 17:53:40 CET 2019
 

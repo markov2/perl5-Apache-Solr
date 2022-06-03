@@ -74,8 +74,10 @@ use overload
 sub new(@) { my $c = shift; (bless {}, $c)->init({@_}) }
 sub init($)
 {   my ($self, $args) = @_;
-    $self->{ASR_params}   = $args->{params}   or panic;
-    $self->{ASR_endpoint} = $args->{endpoint} or panic;
+    my $p = $self->{ASR_params} = $args->{params} or panic;
+    $self->{ASR_endpoint} = $args->{endpoint}     or panic;
+
+    my %params            = @$p;
 
     $self->{ASR_start}    = time;
     $self->request($args->{request});
@@ -85,7 +87,7 @@ sub init($)
     weaken $self->{ASR_pages}[0];            # no reference loop!
 
     if($self->{ASR_core} = $args->{core}) { weaken $self->{ASR_core} }
-    $self->{ASR_next}    = 0;
+    $self->{ASR_next}    = $params{start} || 0;
 
     $self;
 }
