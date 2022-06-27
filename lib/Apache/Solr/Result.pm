@@ -255,7 +255,7 @@ sub nrSelected()
     $results->{numFound};
 }
 
-=method selected $rank
+=method selected $rank, %options
 Returns information about the query by M<Apache::Solr::select()> on
 position $rank (count starts at 0!)  Returned is an M<Apache::Solr::Document>
 object.
@@ -265,6 +265,8 @@ will automatically collect more of the selected answers, when you address
 results outside the first "page" of "rows".  The results of these other
 requests are cached as well.
 
+This method has no C<%options> at the moment.
+
 =example
    my $r = $solr->select(rows => 10, ...);
    $r or die $r->errors;
@@ -273,10 +275,13 @@ requests are cached as well.
    my $doc = $r->selected(11);         # auto-request more
 =cut
 
-sub selected($;$)
-{   my ($self, $rank, $client) = @_;
+sub selected($%)
+{   my ($self, $rank, %options) = @_;
     my $result   = $self->_getResults
         or panic __x"there are no results in the answer";
+
+	# start for next
+    $self->{ASR_next} = $rank +1;
 
     # in this page?
     my $startnr  = $result->{start};
@@ -298,8 +303,10 @@ sub selected($;$)
     $page->selected($rank);
 }
 
-=method nextSelected 
-[0.95] Produces the next document, or C<undef> when all have been produced.
+=method nextSelected %options
+[0.95] Produces the next document, or C<undef> when there are none
+left.  [1.06] Use M<selected()> or M<new(start)> to give a starting
+point.  [1.06]  The C<%options> are passed to M<selected()>.
 
 =example
   my $result = $solr->select(q => ...);
@@ -308,10 +315,9 @@ sub selected($;$)
   }
 =cut
 
-sub nextSelected()
+sub nextSelected(%)
 {   my $self = shift;
-    my $nr   = $self->{ASR_next}++;
-    $self->selected($nr);
+    $self->selected($self->{ASR_next}, @_);
 }
 
 =method highlighted $document
