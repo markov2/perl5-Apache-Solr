@@ -83,8 +83,8 @@ sub init($)
     $self->request($args->{request});
     $self->response($args->{response});
 
-    $self->{ASR_pages}    = [$self];
-    weaken $self->{ASR_pages}[0];            # no reference loop!
+    $self->{ASR_pages}    = [ $self ];   # first has non-weak page-table
+    weaken $self->{ASR_pages}[0];        # no reference loop!
 
     if($self->{ASR_core} = $args->{core}) { weaken $self->{ASR_core} }
     $self->{ASR_next}    = $params{start} || 0;
@@ -93,7 +93,10 @@ sub init($)
 }
 
 # replace the pageset with a shared set.
-sub _pageset($) { $_[0]->{ASR_pages} = $_[1] }
+sub _pageset($)
+{   $_[0]->{ASR_pages} = $_[1];
+    weaken $_[0]->{ASR_pages};           # otherwise memory leak
+}
 
 #---------------
 =section Accessors
@@ -254,7 +257,7 @@ sub nrSelected()
 
 =method selected $rank
 Returns information about the query by M<Apache::Solr::select()> on
-position $rank (count starts at 0)  Returned is a M<Apache::Solr::Document>
+position $rank (count starts at 0!)  Returned is an M<Apache::Solr::Document>
 object.
 
 The first request will take a certain number of "rows".  This routine
@@ -267,7 +270,7 @@ requests are cached as well.
    $r or die $r->errors;
 
    if(my $last = $r->selected(9)) {...}
-   my $elf = $r->selected(11);         # auto-request more
+   my $doc = $r->selected(11);         # auto-request more
 =cut
 
 sub selected($;$)
@@ -424,11 +427,11 @@ sub selectedPageLoad($;$)
       ( {start => $pagenr * $pz, rows => $pz}, $self->params);
 
     my $page   = $client->select(@params);
-    $page->_pageset($self->{ASR_pages});
 
     # put new page in shared table of pages
-    # no weaken here?  only the first request is captured in the main program.
-    $self->{ASR_pages}[$pagenr] = $page;
+    my $pages  = $self->{ASR_pages};
+    $page->_pageset($pages);
+    $pages->[$pagenr] = $page;
 }
 
 =method replaceParams HASH, $oldparams
