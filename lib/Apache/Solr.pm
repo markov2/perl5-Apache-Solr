@@ -182,12 +182,13 @@ sub server(;$)
     $self->{AS_server} = $uri;
 }
 
+
 #--------------------------
 =section Commands
 
 =subsection Search
 
-=method select $parameters
+=method select [\%options], @parameters
 Find information in the document collection.
 
 This method has a HUGE number of parameters.  These values are passed in
@@ -195,13 +196,17 @@ the uri of the http query to the solr server.  See M<expandSelect()> for
 all the simplifications offered here.  Sets of there parameters
 may need configuration help in the server as well.
 
+[1.06] You may pass some options to process the selected results.  For
+backwards compatability reasons, they have to be passed in a HASH as
+optional first parameter.
 =cut
 
 sub select(@)
 {   my $self = shift;
-    $self->_select(scalar $self->expandSelect(@_));
+    my $args = @_ && ref $_[0] eq 'HASH' ? shift : {};
+    $self->_select($args, scalar $self->expandSelect(@_));
 }
-sub _select(@) {panic "not extended"}
+sub _select($$) {panic "not extended"}
 
 =method queryTerms $terms
 Search for often used terms. See F<http://wiki.apache.org/solr/TermsComponent>

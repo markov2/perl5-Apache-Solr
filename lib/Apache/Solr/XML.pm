@@ -71,8 +71,8 @@ sub xmlsimple() {shift->{ASX_simple}}
 =section Commands
 =cut
 
-sub _select($)
-{   my ($self, $params) = @_;
+sub _select($$)
+{   my ($self, $args, $params) = @_;
     my @params   = @$params;
 
     # select can be called automatically, more than once.  We do not
@@ -81,8 +81,8 @@ sub _select($)
     unshift @params, wt => 'xml' unless $params{wt};
 
     my $endpoint = $self->endpoint('select', params => \@params);
-    my $result   = Apache::Solr::Result->new(params => \@params
-      , endpoint => $endpoint, core => $self);
+    my $result   = Apache::Solr::Result->new(%$args,
+        params => \@params , endpoint => $endpoint, core => $self);
     $self->request($endpoint, $result);
     $result;
 }

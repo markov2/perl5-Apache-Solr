@@ -71,8 +71,8 @@ sub json() {shift->{ASJ_json}}
 See F<http://wiki.apache.org/solr/UpdateJSON>
 =cut
 
-sub _select($)
-{   my ($self, $params) = @_;
+sub _select($$)
+{   my ($self, $args, $params) = @_;
 
     # select may be called more than once, but do not add wt each time
     # again.
@@ -81,8 +81,8 @@ sub _select($)
     unshift @params, wt => 'json';
 
     my $endpoint = $self->endpoint('select', params => \@params);
-    my $result   = Apache::Solr::Result->new(params => \@params
-      , endpoint => $endpoint, core => $self);
+    my $result   = Apache::Solr::Result->new(%$args,
+        params => \@params, endpoint => $endpoint, core => $self);
     $self->request($endpoint, $result);
 
     if(my $dec = $result->decoded)

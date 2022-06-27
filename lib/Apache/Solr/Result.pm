@@ -58,6 +58,7 @@ use overload
 =section Constructors
 
 =c_method new %options
+
 =option  request M<HTTP::Request> object
 =default request C<undef>
 
@@ -69,6 +70,17 @@ use overload
 
 =option  core M<Apache::Solr> object
 =default core C<undef>
+
+=option  sequential BOOLEAN
+=default sequention C<false>
+[1.06] By setting this, you indicate that you will process the documents
+in (numeric) sequential order; that you have no intention to go back to
+a lower number.  This implies that those cached results can be cleaned-up
+in the client early, reducing memory consumption.
+
+However: you are allowed to go back to lower numbers, with the penalty
+of a repeat of a message exchange between this client and the database.
+
 =cut
 
 sub new(@) { my $c = shift; (bless {}, $c)->init({@_}) }
@@ -89,6 +101,7 @@ sub init($)
     if($self->{ASR_core} = $args->{core}) { weaken $self->{ASR_core} }
     $self->{ASR_next}    = $params{start} || 0;
 
+	$self->{ASR_seq}     = $args->{sequential} || 0;
     $self;
 }
 
@@ -100,11 +113,14 @@ sub _pageset($)
 
 #---------------
 =section Accessors
+
 =method start 
 The timestamp of the moment the call has started, including the creation of
 the message to be sent.
+
 =method params 
 List of (expanded) parameters used to call the solr server.
+
 =method endpoint 
 =method request [$request]
 =method response [$response]
@@ -115,12 +131,15 @@ The URI where the request is sent to.
 Number of seconds used to receive a decoded answer.
 =method core 
 [0.95] May return the M<Apache::Solr> object which created this result.
+=method sequential
+[1.06] Shows whether the results are only read in numeric order.
 =cut
 
 sub start()    {shift->{ASR_start}}
 sub endpoint() {shift->{ASR_endpoint}}
 sub params()   {@{shift->{ASR_params}}}
 sub core()     {shift->{ASR_core}}
+sub sequential() {shift->{ASR_seq}}
 
 sub request(;$) 
 {   my $self = shift;
@@ -287,7 +306,10 @@ sub selected($%)
     my $startnr  = $result->{start};
     if($rank >= $startnr)
     {   my $docs = $result->{doc} // $result->{docs} // [];
-        $docs    = [$docs] if ref $docs eq 'HASH'; # when only one result
+
+        # Decoding XML without schema may give unexpect results
+        $docs    = [ $docs ] if ref $docs eq 'HASH'; # when only one result
+
         if($rank - $startnr < @$docs)
         {   my $doc = $docs->[$rank - $startnr];
             return Apache::Solr::Document->fromResult($doc, $rank);
@@ -420,6 +442,7 @@ sub selectedPageSize()
 }
 
 =method selectedPageLoad $rank, $client
+Query the database for the next page of results.
 =cut
 
 sub selectedPageLoad($;$)
@@ -433,11 +456,18 @@ sub selectedPageLoad($;$)
       ( {start => $pagenr * $pz, rows => $pz}, $self->params);
 
     my $page   = $client->select(@params);
+    my $pages  = $self->{ASR_pages};
 
     # put new page in shared table of pages
-    my $pages  = $self->{ASR_pages};
-    $page->_pageset($pages);
     $pages->[$pagenr] = $page;
+    $page->_pageset($pages);
+
+	# purge cached previous pages when in sequential mode
+	if($pagenr != 0 && $self->sequential)
+    {   $pages->[$_] = undef for 0..$pagenr-1;
+    }
+
+	$page;
 }
 
 =method replaceParams HASH, $oldparams
