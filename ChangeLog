@@ -4,7 +4,7 @@
 All modifications are made by Mark Overmeer, unless explicitly stated
 differently.
 
-version 1.06:
+version 1.06: Fri  8 Jul 10:59:27 CEST 2022
 
 	Fixes:
 	- do no warn for long lists of pages, deep recursion.
