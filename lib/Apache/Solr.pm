@@ -746,10 +746,12 @@ Besides the common parameters, like 'q' (query) and 'rows', there
 are parameters for various (pluggable) backends, usually prefixed
 by the backend abbreviation.
 =over 4
+=item * expand
 =item * facet -> F<http://wiki.apache.org/solr/SimpleFacetParameters>
 =item * hl (highlight) -> F<http://wiki.apache.org/solr/HighlightingParameters>
-=item * mtl -> F<http://wiki.apache.org/solr/MoreLikeThis>
+=item * mtl -> F<https://solr.apache.org/guide/8_11/morelikethis.html>
 =item * stats -> F<http://wiki.apache.org/solr/StatsComponent>
+=item * suggest -> F<https://solr.apache.org/guide/8_11/suggester.html>
 =item * group -> F<http://wiki.apache.org/solr/FieldCollapsing>
 =back
 
@@ -777,12 +779,15 @@ You may use M<WebService::Solr::Query> to construct the query ('q').
 =cut
 
 # probably more config later, currently only one column
+# "also-per-field" means, not only $set.$more, but also f.$field.$set.$more
 my %sets =   #also-per-field?
-  ( facet => [1]
-  , hl    => [1]
-  , mlt   => [0]
-  , stats => [0]
-  , group => [0]
+  ( expand  => [0]
+  , facet   => [1]
+  , hl      => [1]
+  , mlt     => [0]
+  , stats   => [0]
+  , suggest => [0]
+  , group   => [0]
   );
  
 sub expandSelect(@)

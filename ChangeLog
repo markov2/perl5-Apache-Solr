@@ -6,6 +6,9 @@ differently.
 
 version 1.07:
 
+	Improvements:
+	- added some new booleans up to Solr 9, probably incomplete.
+
 version 1.06: Fri  8 Jul 10:59:27 CEST 2022
 
 	Fixes:
