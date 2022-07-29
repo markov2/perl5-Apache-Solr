@@ -6,9 +6,13 @@ differently.
 
 version 1.07:
 
+	Fixes:
+	- progress 'sequential' over pages.
+
 	Improvements:
 	- added some new booleans up to Solr 9, probably incomplete.
 	- parse requests with option "huge" [Andy Beverley]
+	- reuse result page size over pages
 
 version 1.06: Fri  8 Jul 10:59:27 CEST 2022
 

@@ -103,7 +103,7 @@ is($t3->endpoint, "$server/select?wt=$format&q=text%3Atac&rows=1&hl=true&hl.fl=c
 
 cmp_ok($t3->nrSelected, '==', 2, '2 items selected');
 
-cmp_ok($t3->selectedPageSize, '==', 1, 'page size 1');
+cmp_ok($t3->pageSize, '==', 1, 'page size 1');
 cmp_ok($t3->selectedPageNr(0), '==', 0, 'item 0 on page 0');
 cmp_ok($t3->selectedPageNr(1), '==', 1, 'item 1 on page 1');
 

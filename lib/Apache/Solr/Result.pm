@@ -72,7 +72,7 @@ use overload
 =default core C<undef>
 
 =option  sequential BOOLEAN
-=default sequention C<false>
+=default sequential C<false>
 [1.06] By setting this, you indicate that you will process the documents
 in (numeric) sequential order; that you have no intention to go back to
 a lower number.  This implies that those cached results can be cleaned-up
@@ -100,8 +100,9 @@ sub init($)
 
     if($self->{ASR_core} = $args->{core}) { weaken $self->{ASR_core} }
     $self->{ASR_next}    = $params{start} || 0;
-
 	$self->{ASR_seq}     = $args->{sequential} || 0;
+    $self->{ASR_fpz}     = $args->{_fpz}  || $self->_calc_page_size;
+
     $self;
 }
 
@@ -262,13 +263,13 @@ not loaded (yet).
   while(my $doc = $result->nextSelected) ...
 =cut
 
-sub _getResults()
+sub _responseData()
 {   my $dec  = shift->decoded;
     $dec->{result} // $dec->{response};
 }
 
 sub nrSelected()
-{   my $results = shift->_getResults
+{   my $results = shift->_responseData
         or panic "there are no results (yet)";
 
     $results->{numFound};
@@ -294,29 +295,34 @@ This method has no C<%options> at the moment.
    my $doc = $r->selected(11);         # auto-request more
 =cut
 
+sub _docs($)
+{   my ($self, $data) = @_;
+    my $docs = $data->{doc} // $data->{docs} // [];
+
+    # Decoding XML without schema may give unexpect results
+    $docs    = [ $docs ] if ref $docs eq 'HASH'; # when only one result
+    $docs;
+}
+
 sub selected($%)
 {   my ($self, $rank, %options) = @_;
-    my $result   = $self->_getResults
+    my $data   = $self->_responseData
         or panic __x"there are no results in the answer";
 
 	# start for next
     $self->{ASR_next} = $rank +1;
 
     # in this page?
-    my $startnr  = $result->{start};
+    my $startnr  = $data->{start};
     if($rank >= $startnr)
-    {   my $docs = $result->{doc} // $result->{docs} // [];
-
-        # Decoding XML without schema may give unexpect results
-        $docs    = [ $docs ] if ref $docs eq 'HASH'; # when only one result
-
+    {   my $docs = $self->_docs($data);
         if($rank - $startnr < @$docs)
         {   my $doc = $docs->[$rank - $startnr];
             return Apache::Solr::Document->fromResult($doc, $rank);
         }
     }
 
-    $rank < $result->{numFound}       # outside answer range
+    $rank < $data->{numFound}       # outside answer range
         or return ();
  
     my $pagenr  = $self->selectedPageNr($rank);
@@ -429,16 +435,36 @@ sub showTimings(;$)
 =method selectedPageNr $rank
 =method selectedPages 
 =method selectedPage $pagenr
-=method selectedPageSize 
 =cut
 
-sub selectedPageNr($) { my $pz = shift->selectedPageSize; int(shift() / $pz) }
+sub selectedPageNr($) { my $pz = shift->fullPageSize; int(shift() / $pz) }
 sub selectPages()     { @{shift->{ASR_pages}} }
 sub selectedPage($)   { my $pages = shift->{ASR_pages}; $pages->[shift()] }
+
+=method selectedPageSize 
+[1.07] DEPRECATED.  Use M<fullPageSize()>.
+=cut
+
+# The reloads page 0, which may have been purged by sequential reading.  Besided,
+# the name does not cover its content: it's not the size of the select page but
+# the first page.
 sub selectedPageSize()
-{   my $result = shift->selectedPage(0)->_getResults || {};
+{   my $result = shift->selectedPage(0)->_responseData || {};
     my $docs   = $result->{doc} // $result->{docs};
     ref $docs eq 'HASH'  ? 1 : ref $docs eq 'ARRAY' ? scalar @$docs : 50;
+}
+
+=method fullPageSize
+[1.07] Returns the page size of all of the full returned pages.  The last page
+is probably smaller.
+=cut
+
+sub fullPageSize() { shift->{ASR_fpz} }
+
+sub _calc_page_size()
+{   my $self = shift;
+    my $docs = $self->_docs($self->selectedPage(0)->_responseData);
+    scalar @$docs;
 }
 
 =method selectedPageLoad $rank, $client
@@ -451,11 +477,12 @@ sub selectedPageLoad($;$)
         or error __x"cannot autoload page {nr}, no client provided"
              , nr => $pagenr;
 
-    my $pz     = $self->selectedPageSize;
+    my $fpz    = $self->fullPageSize;
     my @params = $self->replaceParams
-      ( {start => $pagenr * $pz, rows => $pz}, $self->params);
+      ( {start => $pagenr * $fpz, rows => $fpz}, $self->params);
 
-    my $page   = $client->select(@params);
+    my $seq    = $self->sequential;
+    my $page   = $client->select({sequential => $seq, _fpz => $fpz}, @params);
     my $pages  = $self->{ASR_pages};
 
     # put new page in shared table of pages
@@ -463,7 +490,7 @@ sub selectedPageLoad($;$)
     $page->_pageset($pages);
 
 	# purge cached previous pages when in sequential mode
-	if($pagenr != 0 && $self->sequential)
+	if($seq && $pagenr != 0)
     {   $pages->[$_] = undef for 0..$pagenr-1;
     }
 
