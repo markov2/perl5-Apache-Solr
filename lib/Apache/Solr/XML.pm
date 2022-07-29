@@ -186,8 +186,10 @@ sub request($$;$$)
 #warn $resp->as_string;
     $ct =~ m/xml/i or return $result;
 
-    my $dec = $self->xmlsimple
-       ->XMLin($resp->decoded_content || $resp->content);
+    my $dec = $self->xmlsimple->XMLin(
+        $resp->decoded_content || $resp->content,
+        parseropts => {huge => 1},
+    );
 
 #warn Dumper $dec;
     $result->decoded(_cleanup_parsed $dec);
