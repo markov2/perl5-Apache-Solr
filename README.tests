@@ -1,0 +1,14 @@
+
+# Setting up a test server
+
+Some of the tests require contact to a real Solr server.  Its name
+must be set as environment variable SOLR_TEST_SERVER.
+
+The server should support Fields 'id', 'subject', 'content_type',
+and 'content'.  In my 3.6 server, the 'content' fields was missing
+from the default server configuration.  I had to add
+
+     <field name="content" type="string" indexed="true" stored="true" />
+
+to the schema.xml file, and then restart jetty9
+
