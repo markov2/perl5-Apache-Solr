@@ -918,16 +918,17 @@ sub request($$;$$)
         $req       = HTTP::Request->new
           ( POST => $url
           , [ Content_Type        => $body_ct
-            , Contend_Disposition => 'form-data; name="content"'
+            , Content_Disposition => 'form-data; name="content"'
             ]
           , (ref $body eq 'SCALAR' ? $$body : $body)
           );
     }
 
-#warn $req->as_string;
     $result->request($req);
 
     my $resp = $self->agent->request($req);
+#use Data::Dumper;
+#warn Dumper $resp;
     $result->response($resp);
     $resp;
 }

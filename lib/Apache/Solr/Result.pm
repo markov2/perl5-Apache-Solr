@@ -101,7 +101,7 @@ sub init($)
     if($self->{ASR_core} = $args->{core}) { weaken $self->{ASR_core} }
     $self->{ASR_next}    = $params{start} || 0;
 	$self->{ASR_seq}     = $args->{sequential} || 0;
-    $self->{ASR_fpz}     = $args->{_fpz}  || $self->_calc_page_size;
+    $self->{ASR_fpz}     = $args->{_fpz};
 
     $self;
 }
@@ -328,6 +328,7 @@ sub selected($%)
     my $pagenr  = $self->selectedPageNr($rank);
     my $page    = $self->selectedPage($pagenr)
                || $self->selectedPageLoad($pagenr, $self->core);
+
     $page->selected($rank);
 }
 
@@ -437,7 +438,7 @@ sub showTimings(;$)
 =method selectedPage $pagenr
 =cut
 
-sub selectedPageNr($) { my $pz = shift->fullPageSize; int(shift() / $pz) }
+sub selectedPageNr($) { my $pz = shift->fullPageSize; $pz ? int(shift() / $pz) : 0 }
 sub selectPages()     { @{shift->{ASR_pages}} }
 sub selectedPage($)   { my $pages = shift->{ASR_pages}; $pages->[shift()] }
 
@@ -459,11 +460,13 @@ sub selectedPageSize()
 is probably smaller.
 =cut
 
-sub fullPageSize() { shift->{ASR_fpz} }
+sub fullPageSize() { my $self = shift; $self->{ASR_fpz} ||= $self->_calc_page_size }
 
 sub _calc_page_size()
 {   my $self = shift;
     my $docs = $self->_docs($self->selectedPage(0)->_responseData);
+#warn Dumper $self->selectedPage(0)->_responseData;
+#warn "CALC PZ=", scalar @$docs;
     scalar @$docs;
 }
 
