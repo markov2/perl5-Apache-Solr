@@ -197,7 +197,7 @@ all the simplifications offered here.  Sets of there parameters
 may need configuration help in the server as well.
 
 [1.06] You may pass some options to process the selected results (the
-M<Apache::Solr::Results> object initiation).  For instance, C<sequential>.
+M<Apache::Solr::Result> object initiation).  For instance, C<sequential>.
 For backwards compatability reasons, they have to be passed in a HASH
 as optional first parameter.
 

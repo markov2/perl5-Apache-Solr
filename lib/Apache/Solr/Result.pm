@@ -27,8 +27,9 @@ Apache::Solr::Result - Apache Solr (Lucene) result container
   # All operations return a ::Result object
   my $result = $solr->select(...);
 
-  $result or die $result->solrError; # error reported by Solr
-  $result or die $result->errors;    # any error caught by this object
+  $result->success or die $result->solrError; # error reported by Solr
+  $result->success or die $result->errors;    # any error caught by this object
+  if($result)  # same as if($result->success)
 
   # Lots of trace information included
   $result->showTimings;
@@ -333,9 +334,9 @@ sub selected($%)
 }
 
 =method nextSelected %options
-[0.95] Produces the next document, or C<undef> when there are none
-left.  [1.06] Use M<selected()> or M<new(start)> to give a starting
-point.  [1.06]  The C<%options> are passed to M<selected()>.
+[0.95] Produces the next document, or C<undef> when there are none left.
+[1.06] Use M<selected()> or search parameter C<start> to give a starting
+point.  [1.06] The C<%options> are passed to M<selected()>.
 
 =example
   my $result = $solr->select(q => ...);
@@ -435,11 +436,19 @@ sub showTimings(;$)
 
 =method selectedPageNr $rank
 =method selectedPages 
-=method selectedPage $pagenr
 =cut
 
 sub selectedPageNr($) { my $pz = shift->fullPageSize; $pz ? int(shift() / $pz) : 0 }
 sub selectPages()     { @{shift->{ASR_pages}} }
+
+=method selectedPage $pagenr
+The M<selected()> documents are retreived in pages, each of size
+M<fullPageSize()> (although the last page may be shorter).  Each
+page is separately downloaded when used.  Each page is also a
+full C<Apache::Solr::Result> object with request, response, and timing
+information.
+=cut
+
 sub selectedPage($)   { my $pages = shift->{ASR_pages}; $pages->[shift()] }
 
 =method selectedPageSize 
@@ -465,7 +474,6 @@ sub fullPageSize() { my $self = shift; $self->{ASR_fpz} ||= $self->_calc_page_si
 sub _calc_page_size()
 {   my $self = shift;
     my $docs = $self->_docs($self->selectedPage(0)->_responseData);
-#warn Dumper $self->selectedPage(0)->_responseData;
 #warn "CALC PZ=", scalar @$docs;
     scalar @$docs;
 }
@@ -482,7 +490,7 @@ sub selectedPageLoad($;$)
 
     my $fpz    = $self->fullPageSize;
     my @params = $self->replaceParams
-      ( {start => $pagenr * $fpz, rows => $fpz}, $self->params);
+      ( { start => $pagenr * $fpz, rows => $fpz }, $self->params);
 
     my $seq    = $self->sequential;
     my $page   = $client->select({sequential => $seq, _fpz => $fpz}, @params);

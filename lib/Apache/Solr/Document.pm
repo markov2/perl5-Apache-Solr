@@ -177,8 +177,12 @@ sub content($)
 
 our $AUTOLOAD;
 sub AUTOLOAD
-{   (my $fn = $AUTOLOAD) =~ s/.*\:\:_//;
-    shift->content($fn);
+{   my $self = shift;
+    my $fn = $AUTOLOAD =~ s/.*\:\://r;
+
+      $fn =~ /^_(.*)/    ? $self->content($1)
+    : $fn eq 'DESTROY'   ? undef
+    : panic "Unknown method $AUTOLOAD (hint: fields start with '_')";
 }
 
 =method addField $name, $content, %options
