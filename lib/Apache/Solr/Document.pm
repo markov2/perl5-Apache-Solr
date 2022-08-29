@@ -178,7 +178,7 @@ sub content($)
 our $AUTOLOAD;
 sub AUTOLOAD
 {   my $self = shift;
-    my $fn = $AUTOLOAD =~ s/.*\:\://r;
+    (my $fn = $AUTOLOAD) =~ s/.*\:\://;
 
       $fn =~ /^_(.*)/    ? $self->content($1)
     : $fn eq 'DESTROY'   ? undef

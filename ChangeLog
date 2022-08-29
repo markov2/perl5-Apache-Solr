@@ -6,6 +6,9 @@ differently.
 
 version 1.08:
 
+	Fixes:
+	- perl 5.12 syntax issue [cpantesters]
+
 version 1.07: Fri 26 Aug 09:41:03 CEST 2022
 
 	Fixes:
