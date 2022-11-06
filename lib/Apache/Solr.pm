@@ -926,7 +926,15 @@ sub request($$;$$)
 
     $result->request($req);
 
-    my $resp = $self->agent->request($req);
+    my $resp;
+  RETRY:
+    {   $resp = $self->agent->request($req);
+        unless($resp->is_success)
+        {   alert "Solr request failed with ".$resp->code;
+            sleep 5;    # let remote settle a bit
+            goto RETRY;
+        }
+    }
 #use Data::Dumper;
 #warn Dumper $resp;
     $result->response($resp);
