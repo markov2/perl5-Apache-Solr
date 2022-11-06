@@ -39,6 +39,7 @@ Apache::Solr - Apache Solr (Lucene) extension
 
   # use Log::Report mode => "DEBUG";
   my $solr    = Apache::Solr->new(server => $url);
+  my $lwp     = $solr->agent;   # internal LWP::UserAgent
 
   my $doc     = Apache::Solr::Document->new(...);
   my $results = $solr->addDocument($doc);
@@ -137,8 +138,9 @@ sub init($)
     $self->{AS_commit}   = exists $args->{autocommit} ? $args->{autocommit} : 1;
     $self->{AS_sversion} = $args->{server_version} || LATEST_SOLR_VERSION;
 
-    $http_agent = $self->{AS_agent} = $args->{agent} ||
-       $http_agent || LWP::UserAgent->new(keep_alive=>1);
+    $http_agent = $self->{AS_agent}
+       = $args->{agent} || $http_agent || LWP::UserAgent->new(keep_alive=>1);
+
     weaken $http_agent;
 
     $self;
