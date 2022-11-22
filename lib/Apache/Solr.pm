@@ -117,6 +117,21 @@ Commit all changes immediately unless specified differently.
 Communication format between client and server.  You may also instantiate
 M<Apache::Solr::XML> or M<Apache::Solr::JSON> directly.
 
+=option  retry_wait SECONDS
+=default retry_wait C<5>
+[1.09] When the connection to the Solr server fails, or when the server
+does not respond correctly, a retry is attempted after waiting a few
+seconds.  You may use '0' to avoid waiting.
+
+=option  retry_max COUNT
+=default retry_max C<60>
+[1.09] When the server(-connection) persists in producing errors, it
+may not recover at all.  Let's not block the main code.  Of course, it
+may take considerable time for each error to show, so the communication
+failure can take much, much longer than C<retry_wait> times C<retry_max>
+seconds.
+
+You can disable retries with with '0'.
 =cut
 
 sub new(@)
@@ -137,6 +152,8 @@ sub init($)
     $self->{AS_core}     = $args->{core};
     $self->{AS_commit}   = exists $args->{autocommit} ? $args->{autocommit} : 1;
     $self->{AS_sversion} = $args->{server_version} || LATEST_SOLR_VERSION;
+    $self->{AS_retry_wait} = $args->{retry_wait} // 5;  # seconds
+    $self->{AS_retry_max}  = $args->{retry_max}  // 60;
 
     $http_agent = $self->{AS_agent}
        = $args->{agent} || $http_agent || LWP::UserAgent->new(keep_alive=>1);
@@ -929,16 +946,17 @@ sub request($$;$$)
     $result->request($req);
 
     my $resp;
-  RETRY:
+    my $retries = $self->{AS_retry_max};
+    my $wait    = $self->{AS_retry_wait};
+
+    while($retries--)
     {   $resp = $self->agent->request($req);
-        unless($resp->is_success)
-        {   alert "Solr request failed with ".$resp->code;
-            sleep 5;    # let remote settle a bit
-            goto RETRY;
-        }
+        last if $resp->is_success;
+
+        alert "Solr request failed with ".$resp->code." ($retries retries left)";
+        sleep $wait if $wait;    # let remote settle a bit
     }
-#use Data::Dumper;
-#warn Dumper $resp;
+
     $result->response($resp);
     $resp;
 }
