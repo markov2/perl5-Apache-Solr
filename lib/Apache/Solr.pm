@@ -928,11 +928,7 @@ sub request($$;$$)
 {   my ($self, $url, $result, $body, $body_ct) = @_;
 
     my $req;
-    if(!$body)
-    {   # request without payload
-        $req = HTTP::Request->new(GET => $url);
-    }
-    else
+    if($body)
     {   # request with 'form' payload
         $req       = HTTP::Request->new
           ( POST => $url
@@ -941,6 +937,10 @@ sub request($$;$$)
             ]
           , (ref $body eq 'SCALAR' ? $$body : $body)
           );
+    }
+    else
+    {   # request without payload
+        $req = HTTP::Request->new(GET => $url);
     }
 
     $result->request($req);
