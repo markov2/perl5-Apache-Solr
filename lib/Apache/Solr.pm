@@ -18,7 +18,11 @@ use URI            ();
 use LWP::UserAgent ();
 use MIME::Types    ();
 
-use constant LATEST_SOLR_VERSION => '4.5';  # newest support by this module
+use constant
+  { LATEST_SOLR_VERSION => '4.5'  # newest support by this module
+  , ENETDOWN    => 100   # error codes may not be available on all platforms
+  , ENETUNREACH => 101   #    so cannot use Errno.
+  };
 
 # overrule this when your host has a different unique field
 our $uniqueKey  = 'id';
@@ -565,7 +569,8 @@ sub extractDocument(@)
 
     $self->_extract([%p], $data, $ct);
 }
-sub _extract($){panic "not implemented"}
+
+sub _extract($) { panic "not implemented" }
 
 #-------------------------
 =subsection Core management
@@ -578,8 +583,7 @@ sub _core_admin($@)
 {   my ($self, $action, $params) = @_;
     $params->{core} ||= $self->core;
     
-    my $endpoint = $self->endpoint('cores', core => 'admin'
-      , params => $params);
+    my $endpoint = $self->endpoint('cores', core => 'admin', params => $params);
 
     my @params   = %$params;
     my $result   = Apache::Solr::Result->new(params => [ %$params ]
@@ -787,7 +791,7 @@ You may use M<WebService::Solr::Query> to construct the query ('q').
     , mlt   => { fl => 'manu,cat', mindf => 1, mintf => 1 }
     , stats => { field => [ 'price', 'popularity' ] }
     , group => { query => 'price:[0 TO 99.99]', limit => 3 }
-     );
+    );
 
   # becomes (one line)
   ...?rows=10&q=inStock:true
@@ -948,13 +952,29 @@ sub request($$;$$)
     my $resp;
     my $retries = $self->{AS_retry_max};
     my $wait    = $self->{AS_retry_wait};
+    my $start   = time;
 
     while($retries--)
     {   $resp = $self->agent->request($req);
         last if $resp->is_success;
 
-        alert "Solr request failed with ".$resp->code." ($retries retries left)";
-        sleep $wait if $wait;    # let remote settle a bit
+        if($resp->code != 500)
+        {   alert "Solr request failed with ".$resp->code;
+            last;
+        }
+
+        $! = ENETDOWN;  # HTTP(500) -> unix error
+        alert __x"Solr request failed with {code}, {retries} retries left",
+            code => $resp->code, retries => $retries;
+
+        sleep $wait if $wait && $retries;    # let remote settle a bit
+    }
+
+    unless($resp->is_success)
+    {   my $elapse = time - $start;
+        $! = $resp->code==500 ? ENETDOWN : ENETUNREACH;
+        fault __x"Solr request failed after {elapse} seconds after {retries} retries",
+            elapse => $elapse, retries => $self->{AS_retry_max} - $retries -1;
     }
 
     $result->response($resp);
