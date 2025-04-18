@@ -16,4 +16,4 @@ t/12facet.t
 t/20xml.t
 t/21json.t
 t/30result.t
-t/a.pdf
+t/32version.t
