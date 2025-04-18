@@ -65,7 +65,7 @@ Apache::Solr - Apache Solr (Lucene) extension
   dispatcher SYSLOG => 'default';  # now all warnings/error to syslog
   try { $solr->select(...) }; print $@->wasFatal;
 
-  # Information about communication errors 
+  # [1.10] Information about communication errors 
   try { $solr->...(...) };
   if(my $ex = $@->wasFatal)
   {  if(my $http = $ex->message->valueOf('http_response'))
@@ -977,8 +977,7 @@ sub request($$;$$)
     unless($resp->is_success)
     {   $! = $resp->code==500 ? ENETDOWN : ENETUNREACH;
         fault __x"Solr request failed after {elapse} seconds after {retries} retries",
-            elapse => time - $start, retries => $self->{AS_retry_max} - $retries -1,
-            http_response => $resp;
+            elapse => time - $start, retries => $self->{AS_retry_max} - $retries -1, http_response => $resp;
     }
 
     $result->response($resp);

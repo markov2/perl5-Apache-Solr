@@ -11,6 +11,7 @@ version 1.10:
 	- capitalize error messages
 	- add http_response to some errors. Requested by [Andy Beverley]
 	- add SOLR version display during test.
+	- Boolean parameters update to Solr 9.8 syntax.
 
 version 1.09: Tue  6 Dec 13:28:37 CET 2022
 
