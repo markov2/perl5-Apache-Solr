@@ -308,7 +308,7 @@ sub _docs($)
 sub selected($%)
 {   my ($self, $rank, %options) = @_;
     my $data   = $self->_responseData
-        or panic __x"there are no results in the answer";
+        or panic __x"There are no results in the answer";
 
 	# start for next
     $self->{ASR_next} = $rank +1;
@@ -359,7 +359,7 @@ sub highlighted($)
     my $rank   = $doc->rank;
     my $pagenr = $self->selectedPageNr($rank);
     my $hl     = $self->selectedPage($pagenr)->decoded->{highlighting}
-        or error __x"there is no highlighting information in the result";
+        or error __x"There is no highlighting information in the result";
     Apache::Solr::Document->fromResult($hl->{$doc->uniqueId}, $rank);
 }
 
@@ -380,7 +380,7 @@ sub terms($;$)
     return $self->{ASR_terms}{$field} = shift if @_;
 
     my $r = $self->{ASR_terms}{$field}
-        or error __x"no search for terms on field {field} requested"
+        or error __x"No search for terms on field {field} requested"
             , field => $field;
 
     $r;
@@ -485,7 +485,7 @@ Query the database for the next page of results.
 sub selectedPageLoad($;$)
 {   my ($self, $pagenr, $client) = @_;
     $client
-        or error __x"cannot autoload page {nr}, no client provided"
+        or error __x"Cannot autoload page {nr}, no client provided"
              , nr => $pagenr;
 
     my $fpz    = $self->fullPageSize;

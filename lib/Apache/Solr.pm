@@ -65,6 +65,12 @@ Apache::Solr - Apache Solr (Lucene) extension
   dispatcher SYSLOG => 'default';  # now all warnings/error to syslog
   try { $solr->select(...) }; print $@->wasFatal;
 
+  # Information about communication errors 
+  try { $solr->...(...) };
+  if(my $ex = $@->wasFatal)
+  {  if(my $http = $ex->message->valueOf('http_response'))
+     {   warn $http->decoded_content;
+
 =chapter DESCRIPTION
 Solr is a stand-alone full-text search-engine (based on Lucent), with
 loads of features.  This module tries to provide a high level interface
@@ -89,6 +95,10 @@ instantiated as such.
 By default the latest version of the server software, currently 4.5.
 Try to get this setting right, because it will help you a lot in correct
 parameter use and support for the right features.
+
+We know now that this can be requested via C</admin/info/system>, but
+do not spend more development time on this module until it gets more
+users.
 
 =option  core NAME
 =default core C<undef>
@@ -487,7 +497,7 @@ sub _delete(@) {panic "not implemented"}
 sub rollback()
 {   my $self = shift;
     $self->serverVersion ge '1.4'
-        or error __x"rollback not supported by solr server";
+        or error __x"Rollback not supported by solr server";
 
     $self->_rollback;
 }
@@ -555,16 +565,14 @@ sub extractDocument(@)
         if(ref $fn eq 'GLOB') { $data = \<$fn> }
         else
         {   local *IN;
-            open IN, '<:raw', $fn
-                or fault __x"cannot read document from {fn}", fn => $fn;
+            open IN, '<:raw', $fn or fault __x"Cannot read document from {fn}", fn => $fn;
             $data = \<IN>;
-            close IN
-                or fault __x"read error for document {fn}", fn => $fn;
+            close IN or fault __x"Read error for document {fn}", fn => $fn;
             $ct ||= $mimetypes->mimeTypeOf($fn);
         }
     }
     else
-    {   error __x"extract requires document as file or string";
+    {   error __x"Extract requires document as file or string";
     }
 
     $self->_extract([%p], $data, $ct);
@@ -574,7 +582,7 @@ sub _extract($) { panic "not implemented" }
 
 #-------------------------
 =subsection Core management
-See F<http://lucidworks.lucidimagination.com/display/solr/Configuring+solr.xml>
+See F<https://solr.apache.org/guide/6_6/coreadmin-api.html>
 The CREATE, SWAP, ALIAS, and RENAME actions are not yet supported, because
 they are not very useful, it seems.
 =cut
@@ -584,10 +592,8 @@ sub _core_admin($@)
     $params->{core} ||= $self->core;
     
     my $endpoint = $self->endpoint('cores', core => 'admin', params => $params);
-
     my @params   = %$params;
-    my $result   = Apache::Solr::Result->new(params => [ %$params ]
-      , endpoint => $endpoint, core => $self);
+    my $result   = Apache::Solr::Result->new(params => [ %$params ], endpoint => $endpoint, core => $self);
 
     $self->request($endpoint, $result);
     $result;
@@ -831,12 +837,10 @@ sub expandSelect(@)
         if(my $def = $sets{$set})
         {   $seen_set{$set} = 1;
             !$per_field || $def->[0]
-               or error __x"set {set} cannot be used per field, in {field}"
-                    , set => $set, field => $k;
+               or error __x"Set {set} cannot be used per field, in {field}", set => $set, field => $k;
 
             if(ref $v eq 'HASH')
-            {   !$more
-                    or error __x"field {field} is not simple for a set", field => $k;
+            {   !$more or error __x"Field {field} is not simple for a set", field => $k;
                 push @s, $self->_simpleExpand($v, "$k.");
             }
             elsif($more)    # skip $set=true for now
@@ -844,7 +848,7 @@ sub expandSelect(@)
             }
         }
         elsif(ref $v eq 'HASH')
-        {   error __x"unknown set {set}", set => $set;
+        {   error __x"Unknown set {set}", set => $set;
         }
         else
         {   push @flat, $k => $v;
@@ -863,7 +867,7 @@ indicated server version.
 sub deprecated($)
 {   my ($self, $msg) = @_;
     return if $self->{AS_depr_msg}{$msg}++;  # report only once
-    warning __x"deprecated solr {message}", message => $msg;
+    warning __x"Deprecated solr {message}", message => $msg;
 }
 
 =method ignored $message
@@ -874,7 +878,7 @@ because they were not yet supported by the indicated server version.
 sub ignored($)
 {   my ($self, $msg) = @_;
     return if $self->{AS_ign_msg}{$msg}++;  # report only once
-    warning __x"ignored solr {message}", message => $msg;
+    warning __x"Ignored solr {message}", message => $msg;
 }
 
 =method removed $message
@@ -885,7 +889,7 @@ because they were removed from the indicated server version.
 sub removed($)
 {   my ($self, $msg) = @_;
     return if $self->{AS_rem_msg}{$msg}++;  # report only once
-    warning __x"removed solr {message}", message => $msg;
+    warning __x"Removed solr {message}", message => $msg;
 }
 
 
@@ -908,8 +912,8 @@ is passed; you never know for a HASH.
 sub endpoint($@)
 {   my ($self, $action, %args) = @_;
     my $core = $args{core} || $self->core;
-    my $take = $self->server->clone;
-    $take->path ($take->path . (defined $core ? "/$core" : '') . "/$action");
+    my $take = $self->server->clone;    # URI
+    $take->path($take->path . (defined $core ? "/$core" : '') . "/$action");
 
     # make parameters ordered
     my $params = $args{params} || [];
@@ -965,16 +969,16 @@ sub request($$;$$)
 
         $! = ENETDOWN;  # HTTP(500) -> unix error
         alert __x"Solr request failed with {code}, {retries} retries left",
-            code => $resp->code, retries => $retries;
+            code => $resp->code, retries => $retries, http_response => $resp;
 
         sleep $wait if $wait && $retries;    # let remote settle a bit
     }
 
     unless($resp->is_success)
-    {   my $elapse = time - $start;
-        $! = $resp->code==500 ? ENETDOWN : ENETUNREACH;
+    {   $! = $resp->code==500 ? ENETDOWN : ENETUNREACH;
         fault __x"Solr request failed after {elapse} seconds after {retries} retries",
-            elapse => $elapse, retries => $self->{AS_retry_max} - $retries -1;
+            elapse => time - $start, retries => $self->{AS_retry_max} - $retries -1,
+            http_response => $resp;
     }
 
     $result->response($resp);
