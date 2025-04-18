@@ -123,7 +123,6 @@ the message to be sent.
 =method params 
 List of (expanded) parameters used to call the solr server.
 
-=method endpoint 
 =method request [$request]
 =method response [$response]
 =method decoded [HASH]
