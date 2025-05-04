@@ -931,7 +931,15 @@ sub endpoint($@)
     $take->query_form(@params) if @params;
     $take;
 }
- 
+
+=method request $url, $result, $body, $ct
+Send a request to the server C<$url> and return the response
+(an M<HTTP::Response> object).  A trace of the activity is
+added to the C<$result> object.  The C<$body> of the request
+can be provided as bytes or reference to bytes (SCALAR). The
+content-type C<$ct> must match the body bytes.
+=cut
+
 sub request($$;$$)
 {   my ($self, $url, $result, $body, $body_ct) = @_;
 
