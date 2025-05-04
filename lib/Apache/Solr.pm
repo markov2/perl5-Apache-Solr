@@ -65,11 +65,11 @@ Apache::Solr - Apache Solr (Lucene) extension
   dispatcher SYSLOG => 'default';  # now all warnings/error to syslog
   try { $solr->select(...) }; print $@->wasFatal;
 
-  # [1.10] Information about communication errors 
-  try { $solr->...(...) };
+  # [1.11] Information about communication errors 
+  my $result = try { $solr->select(...) };
   if(my $ex = $@->wasFatal)
-  {  if(my $http = $ex->message->valueOf('http_response'))
-     {   warn $http->decoded_content;
+  {  if($result = $ex->message->valueOf('result'))
+     {   warn Dumper $result->decoded;
 
 =chapter DESCRIPTION
 Solr is a stand-alone full-text search-engine (based on Lucent), with
@@ -968,6 +968,9 @@ sub request($$;$$)
 
     while($retries--)
     {   $resp = $self->agent->request($req);
+    	$result->response($resp);
+		$result->decoded($self->decodeResponse($resp));
+
         last if $resp->is_success;
 
         if($resp->code != 500)
@@ -977,7 +980,7 @@ sub request($$;$$)
 
         $! = ENETDOWN;  # HTTP(500) -> unix error
         alert __x"Solr request failed with {code}, {retries} retries left",
-            code => $resp->code, retries => $retries, http_response => $resp;
+            code => $resp->code, retries => $retries, result => $result;
 
         sleep $wait if $wait && $retries;    # let remote settle a bit
     }
@@ -985,12 +988,13 @@ sub request($$;$$)
     unless($resp->is_success)
     {   $! = $resp->code==500 ? ENETDOWN : ENETUNREACH;
         fault __x"Solr request failed after {elapse} seconds after {retries} retries",
-            elapse => time - $start, retries => $self->{AS_retry_max} - $retries -1, http_response => $resp;
+            elapse => time - $start, retries => $self->{AS_retry_max} - $retries -1, result => $result;
     }
 
-    $result->response($resp);
     $resp;
 }
+
+sub decodeResponse($) { undef }
 
 #----------------------------------
 =chapter DETAILS

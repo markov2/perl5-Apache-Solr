@@ -6,6 +6,12 @@ differently.
 
 version 1.11:
 
+	Changes:
+	- replace http_response from 1.10 by 'result'.
+
+	Improvements:
+	- error results also get parsed.
+
 version 1.10: Fri 18 Apr 16:52:35 CEST 2025
 
 	Improvements:

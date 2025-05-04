@@ -26,7 +26,6 @@ my @xml_decode_config =
   , ContentKey   => '_'
   , KeyAttr      => []
   );
-sub _cleanup_parsed($);
 
 =chapter NAME
 Apache::Solr::XML - Apache Solr (Lucene) client via XML
@@ -176,10 +175,15 @@ sub request($$;$$)
         $body      = \$body->toString;
     }
 
-    my $resp = $self->SUPER::request($url, $result, $body, $body_ct);
-    my $ct   = $resp->content_type;
-#warn $resp->as_string;
-    $ct =~ m/xml/i or return $result;
+    $self->SUPER::request($url, $result, $body, $body_ct);
+}
+
+sub _cleanup_parsed($);
+sub decodeResponse($)
+{   my ($self, $resp) = @_;
+
+    $resp->content_type =~ m/xml/i
+        or return undef;
 
     my $dec = $self->xmlsimple->XMLin(
         $resp->decoded_content || $resp->content,
@@ -187,8 +191,7 @@ sub request($$;$$)
     );
 
 #warn Dumper $dec;
-    $result->decoded(_cleanup_parsed $dec);
-    $result;
+    _cleanup_parsed $dec;
 }
 
 sub _cleanup_parsed($)
