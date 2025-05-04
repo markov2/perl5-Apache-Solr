@@ -19,7 +19,7 @@ use LWP::UserAgent ();
 use MIME::Types    ();
 
 use constant
-  { LATEST_SOLR_VERSION => '4.5'  # newest support by this module
+  { LATEST_SOLR_VERSION => '9.8'  # newest support by this module
   , ENETDOWN    => 100   # error codes may not be available on all platforms
   , ENETUNREACH => 101   #    so cannot use Errno.
   };

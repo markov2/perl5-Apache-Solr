@@ -183,7 +183,7 @@ sub request($$;$$)
 
     my $dec = $self->xmlsimple->XMLin(
         $resp->decoded_content || $resp->content,
-        parseropts => {huge => 1},
+        parseropts => { huge => 1 },
     );
 
 #warn Dumper $dec;
