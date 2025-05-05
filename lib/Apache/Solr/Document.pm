@@ -62,13 +62,13 @@ Boost the preference for hits in this document.
 
 sub new(@) { my $c = shift; (bless {}, $c)->init({@_}) }
 sub init($)
-{   my ($self, $args) = @_;
+{	my ($self, $args) = @_;
 
-    $self->{ASD_boost}    = $args->{boost} || 1.0;
-    $self->{ASD_fields}   = [];   # ordered
-    $self->{ASD_fields_h} = {};   # grouped by name
-    $self->addFields($args->{fields});
-    $self;
+	$self->{ASD_boost}    = $args->{boost} || 1.0;
+	$self->{ASD_fields}   = [];   # ordered
+	$self->{ASD_fields_h} = {};   # grouped by name
+	$self->addFields($args->{fields});
+	$self;
 }
 
 =c_method fromResult HASH, $rank
@@ -77,21 +77,20 @@ search.
 =cut
 
 sub fromResult($$)
-{   my ($class, $data, $rank) = @_;
-    my (@f, %fh);
-    
-    while(my($k, $v) = each %$data)
-    {   my @v = map +{name => $k, content => $_}
-             , ref $v eq 'ARRAY' ? @$v : $v;
-        push @f, @v;
-        $fh{$k} = \@v;
-    }
+{	my ($class, $data, $rank) = @_;
+	my (@f, %fh);
+	
+	while(my($k, $v) = each %$data)
+	{	my @v = map +{name => $k, content => $_}, ref $v eq 'ARRAY' ? @$v : $v;
+		push @f, @v;
+		$fh{$k} = \@v;
+	}
 
-    my $self = $class->new;
-    $self->{ASD_rank}     = $rank;
-    $self->{ASD_fields}   = \@f;
-    $self->{ASD_fields_h} = \%fh;
-    $self;
+	my $self = $class->new;
+	$self->{ASD_rank}     = $rank;
+	$self->{ASD_fields}   = \@f;
+	$self->{ASD_fields_h} = \%fh;
+	$self;
 }
 
 #---------------
@@ -109,10 +108,10 @@ All used unique names.
 =cut
 
 sub boost(;$)
-{   my $self = shift;
-    @_ or return $self->{ASD_boost};
-    my $f = $self->field(shift) or return;
-    @_ ? $f->{boost} = shift : $f->{boost};
+{	my $self = shift;
+	@_ or return $self->{ASD_boost};
+	my $f = $self->field(shift) or return;
+	@_ ? $f->{boost} = shift : $f->{boost};
 }
 
 sub fieldNames() { my %c; $c{$_->{name}}++ for shift->fields; sort keys %c }
@@ -139,12 +138,12 @@ is provided, only those fields are returned.
 =cut
 
 sub fields(;$)
-{   my $self = shift;
-    my $f    = $self->{ASD_fields};
-    @_ or return @$f;
-    my $name = shift;
-    my $fh   = $self->{ASD_fields_h}{$name};   # grouped by name
-    $fh ? @$fh : ();
+{	my $self = shift;
+	my $f    = $self->{ASD_fields};
+	@_ or return @$f;
+	my $name = shift;
+	my $fh   = $self->{ASD_fields_h}{$name};   # grouped by name
+	$fh ? @$fh : ();
 }
 
 =method field $name
@@ -162,8 +161,8 @@ field with a leading '_'.
 =cut
 
 sub field($)
-{   my $fh = $_[0]->{ASD_fields_h}{$_[1]};
-    $fh ? $fh->[0] : undef;
+{	my $fh = $_[0]->{ASD_fields_h}{$_[1]};
+	$fh ? $fh->[0] : undef;
 }
 
 =method content $name
@@ -171,18 +170,18 @@ Returns the content of the first field with $name.
 =cut
 
 sub content($)
-{   my $f = $_[0]->field($_[1]);
-    $f ? $f->{content} : undef;
+{	my $f = $_[0]->field($_[1]);
+	$f ? $f->{content} : undef;
 }
 
 our $AUTOLOAD;
 sub AUTOLOAD
-{   my $self = shift;
-    (my $fn = $AUTOLOAD) =~ s/.*\:\://;
+{	my $self = shift;
+	(my $fn = $AUTOLOAD) =~ s/.*\:\://;
 
-      $fn =~ /^_(.*)/    ? $self->content($1)
-    : $fn eq 'DESTROY'   ? undef
-    : panic "Unknown method $AUTOLOAD (hint: fields start with '_')";
+	  $fn =~ /^_(.*)/    ? $self->content($1)
+	: $fn eq 'DESTROY'   ? undef
+	: panic "Unknown method $AUTOLOAD (hint: fields start with '_')";
 }
 
 =method addField $name, $content, %options
@@ -201,24 +200,25 @@ F<https://cwiki.apache.org/confluence/display/solr/Updating+Parts+of+Documents>
 =cut
 
 sub addField($$%)
-{   my $self  = shift;
-    my $name  = shift;
-    defined $_[0] or return;
+{	my $self  = shift;
+	my $name  = shift;
+	defined $_[0] or return;
 
-    my $field =     # important to minimalize copying of content
-      { name    => $name
-      , content => ( !ref $_[0]            ? shift
-                   : ref $_[0] eq 'SCALAR' ? ${shift()}
-                   :                         shift
-                   )
-      };
-    my %args  = @_;
-    $field->{boost}  = $args{boost} || 1.0;
-    $field->{update} = $args{update};
+	my $field = {   # important to minimalize copying of content
+		name    => $name,
+		content => (
+		    !ref $_[0]            ? shift
+		  : ref $_[0] eq 'SCALAR' ? ${shift()}
+		  :                         shift
+		),
+	};
+	my %args  = @_;
+	$field->{boost}  = $args{boost} || 1.0;
+	$field->{update} = $args{update};
 
-    push @{$self->{ASD_fields}}, $field;
-    push @{$self->{ASD_fields_h}{$name}}, $field;
-    $field;
+	push @{$self->{ASD_fields}}, $field;
+	push @{$self->{ASD_fields_h}{$name}}, $field;
+	$field;
 }
 
 =method addFields HASH|ARRAY, %options
@@ -227,17 +227,17 @@ The %options are passed M<addField()> as %options.
 =cut
 
 sub addFields($%)
-{   my ($self, $h, @args) = @_;
-    # pass content by ref to avoid a copy of potentially huge field.
-    if(ref $h eq 'ARRAY')
-    {   for(my $i=0; $i < @$h; $i+=2)
-        {   $self->addField($h->[$i] => \$h->[$i+1], @args);
-        }
-    }
-    else
-    {   $self->addField($_ => \$h->{$_}, @args) for sort keys %$h;
-    }
-    $self;
+{	my ($self, $h, @args) = @_;
+	# pass content by ref to avoid a copy of potentially huge field.
+	if(ref $h eq 'ARRAY')
+	{	for(my $i=0; $i < @$h; $i+=2)
+		{	$self->addField($h->[$i] => \$h->[$i+1], @args);
+		}
+	}
+	else
+	{	$self->addField($_ => \$h->{$_}, @args) for sort keys %$h;
+	}
+	$self;
 }
 
 #--------------------------

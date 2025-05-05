@@ -181,12 +181,11 @@ timeAllowed		1.3
 tv.all			1.4
 tv.fl			3.1
 tv.tf			1.4
-
 /;
 
 our %deprecated = qw/
- facet.date		3.1
- facet.zeros		1.2
- carrot.lexicalResourcesDir 4.5
+facet.date		3.1
+facet.zeros		1.2
+carrot.lexicalResourcesDir 4.5
 /;
 

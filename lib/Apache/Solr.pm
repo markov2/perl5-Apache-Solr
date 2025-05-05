@@ -18,11 +18,11 @@ use URI            ();
 use LWP::UserAgent ();
 use MIME::Types    ();
 
-use constant
-  { LATEST_SOLR_VERSION => '9.8'  # newest support by this module
-  , ENETDOWN    => 100   # error codes may not be available on all platforms
-  , ENETUNREACH => 101   #    so cannot use Errno.
-  };
+use constant {
+	LATEST_SOLR_VERSION => '9.8',  # newest support by this module
+	ENETDOWN    => 100,   # error codes may not be available on all platforms
+	ENETUNREACH => 101,   #    so cannot use Errno.
+};
 
 # overrule this when your host has a different unique field
 our $uniqueKey  = 'id';
@@ -30,10 +30,10 @@ my  $mimetypes  = MIME::Types->new;
 my  $http_agent;
 
 sub _to_bool($)
-{  my $b = shift;
-     !defined $b ? undef
-   : ($b && $b ne 'false' && $b ne 'off') ? 'true' 
-   : 'false';
+{	my $b = shift;
+	   !defined $b ? undef
+	 : ($b && $b ne 'false' && $b ne 'off') ? 'true' 
+	 : 'false';
 }
 
 =chapter NAME
@@ -55,7 +55,7 @@ Apache::Solr - Apache Solr (Lucene) extension
 
   my $results = $solr->select(q => "really", hl => {fl=>'content'});
   while(my $doc = $results->nextSelected)
-  {   my $hldoc = $results->highlighted($doc);
+  {    my $hldoc = $results->highlighted($doc);
       print $hldoc->_content;
       ...
   }
@@ -68,8 +68,9 @@ Apache::Solr - Apache Solr (Lucene) extension
   # [1.11] Information about communication errors 
   my $result = try { $solr->select(...) };
   if(my $ex = $@->wasFatal)
-  {  if($result = $ex->message->valueOf('result'))
-     {   warn Dumper $result->decoded;
+  {  $result = $ex->message->valueOf('result');
+     if(defined $result)   #!! defined !!
+     {    warn Dumper $result->decoded;
 
 =chapter DESCRIPTION
 Solr is a stand-alone full-text search-engine (based on Lucent), with
@@ -149,32 +150,31 @@ You can disable retries with with '0'.
 =cut
 
 sub new(@)
-{   my ($class, %args) = @_;
-    if($class eq __PACKAGE__)
-    {   my $format = delete $args{format} || 'XML';
-        $format eq 'XML' || $format eq 'JSON'
-            or panic "unknown communication format '$format' for solr";
-        $class .= '::' . $format;
-        eval "require $class"; panic $@ if $@;
-    }
-    (bless {}, $class)->init(\%args)
+{	my ($class, %args) = @_;
+	if($class eq __PACKAGE__)
+	{	my $format = delete $args{format} || 'XML';
+		$format eq 'XML' || $format eq 'JSON'
+			or panic "unknown communication format '$format' for solr";
+		$class .= '::' . $format;
+		eval "require $class"; panic $@ if $@;
+	}
+	(bless {}, $class)->init(\%args)
 }
 
 sub init($)
-{   my ($self, $args) = @_;
-    $self->server($args->{server});
-    $self->{AS_core}     = $args->{core};
-    $self->{AS_commit}   = exists $args->{autocommit} ? $args->{autocommit} : 1;
-    $self->{AS_sversion} = $args->{server_version} || LATEST_SOLR_VERSION;
-    $self->{AS_retry_wait} = $args->{retry_wait} // 5;  # seconds
-    $self->{AS_retry_max}  = $args->{retry_max}  // 60;
+{	my ($self, $args) = @_;
+	$self->server($args->{server});
+	$self->{AS_core}     = $args->{core};
+	$self->{AS_commit}   = exists $args->{autocommit} ? $args->{autocommit} : 1;
+	$self->{AS_sversion} = $args->{server_version} || LATEST_SOLR_VERSION;
+	$self->{AS_retry_wait} = $args->{retry_wait} // 5;  # seconds
+	$self->{AS_retry_max}  = $args->{retry_max}  // 60;
 
-    $http_agent = $self->{AS_agent}
-       = $args->{agent} || $http_agent || LWP::UserAgent->new(keep_alive=>1);
+	$http_agent = $self->{AS_agent} =
+		$args->{agent} || $http_agent || LWP::UserAgent->new(keep_alive=>1);
 
-    weaken $http_agent;
-
-    $self;
+	weaken $http_agent;
+	$self;
 }
 
 #---------------
@@ -196,9 +196,8 @@ latest).  Treat this version as string, to avoid rounding errors.
 =cut
 
 sub core(;$) { my $s = shift; @_ ? $s->{AS_core}   = shift : $s->{AS_core} }
-sub autocommit(;$)
-             { my $s = shift; @_ ? $s->{AS_commit} = shift : $s->{AS_commit} }
-sub agent()  {shift->{AS_agent}}
+sub autocommit(;$) { my $s = shift; @_ ? $s->{AS_commit} = shift : $s->{AS_commit} }
+sub agent() {shift->{AS_agent}}
 sub serverVersion() {shift->{AS_sversion}}
 
 =method server [$uri|STRING]
@@ -208,11 +207,11 @@ object.
 =cut
 
 sub server(;$)
-{   my ($self, $uri) = @_;
-    $uri or return $self->{AS_server};
-    $uri = URI->new($uri)
-         unless blessed $uri && $uri->isa('URI');
-    $self->{AS_server} = $uri;
+{	my ($self, $uri) = @_;
+	$uri or return $self->{AS_server};
+	$uri = URI->new($uri)
+		unless blessed $uri && $uri->isa('URI');
+	$self->{AS_server} = $uri;
 }
 
 
@@ -237,9 +236,9 @@ as optional first parameter.
 =cut
 
 sub select(@)
-{   my $self = shift;
-    my $args = @_ && ref $_[0] eq 'HASH' ? shift : {};
-    $self->_select($args, scalar $self->expandSelect(@_));
+{	my $self = shift;
+	my $args = @_ && ref $_[0] eq 'HASH' ? shift : {};
+	$self->_select($args, scalar $self->expandSelect(@_));
 }
 sub _select($$) {panic "not extended"}
 
@@ -254,8 +253,8 @@ even when you explicitly request it.
 =examples
   my $r = $self->queryTerms(fl => 'subject', limit => 100);
   if($r->success)
-  {   foreach my $hit ($r->terms('subject'))
-      {   my ($term, $count) = @$hit;
+  {    foreach my $hit ($r->terms('subject'))
+      {    my ($term, $count) = @$hit;
           print "term=$term, count=$count\n";
       }
   }
@@ -265,8 +264,8 @@ even when you explicitly request it.
 =cut
 
 sub queryTerms(@)
-{   my $self  = shift;
-    $self->_terms(scalar $self->expandTerms(@_));
+{	my $self  = shift;
+	$self->_terms(scalar $self->expandTerms(@_));
 }
 sub _terms(@) {panic "not implemented"}
 
@@ -305,32 +304,31 @@ servers.  Currently, the resolution is milli-seconds.
 =cut
 
 sub addDocument($%)
-{   my ($self, $docs, %args) = @_;
-    $docs  = [ $docs ] if ref $docs ne 'ARRAY';
+{	my ($self, $docs, %args) = @_;
+	$docs  = [ $docs ] if ref $docs ne 'ARRAY';
 
-    my $sv = $self->serverVersion;
+	my $sv = $self->serverVersion;
 
-    my (%attrs, %params);
-    $params{commit}
-      = _to_bool(exists $args{commit} ? $args{commit} : $self->autocommit);
+	my (%attrs, %params);
+	$params{commit} = _to_bool(exists $args{commit} ? $args{commit} : $self->autocommit);
 
-    if(my $cw = $args{commitWithin})
-    {   if($sv lt '3.4') { $attrs{commit} = 'true' }
-        else { $attrs{commitWithin} = int($cw * 1000) }
-    }
+	if(my $cw = $args{commitWithin})
+	{	if($sv lt '3.4') { $attrs{commit} = 'true' }
+		else { $attrs{commitWithin} = int($cw * 1000) }
+	}
 
-    $attrs{overwrite} = _to_bool delete $args{overwrite}
-        if exists $args{overwrite};
+	$attrs{overwrite} = _to_bool delete $args{overwrite}
+		if exists $args{overwrite};
 
-    foreach my $depr (qw/allowDups overwritePending overwriteCommitted/)
-    {   if(exists $args{$depr})
-        {      if($sv ge '4.0') { $self->removed("add($depr)"); delete $args{$depr} }
-            elsif($sv ge '1.0') { $self->deprecated("add($depr)") }
-            else { $attrs{$depr} = _to_bool delete $args{$depr} }
-        }
-    }
+	foreach my $depr (qw/allowDups overwritePending overwriteCommitted/)
+	{	if(exists $args{$depr})
+		{	  if($sv ge '4.0') { $self->removed("add($depr)"); delete $args{$depr} }
+			elsif($sv ge '1.0') { $self->deprecated("add($depr)") }
+			else { $attrs{$depr} = _to_bool delete $args{$depr} }
+		}
+	}
 
-    $self->_add($docs, \%attrs, \%params);
+	$self->_add($docs, \%attrs, \%params);
 }
 
 =method commit %options
@@ -352,31 +350,31 @@ sub addDocument($%)
 =cut
 
 sub commit(%)
-{   my ($self, %args) = @_;
-    my $sv = $self->serverVersion;
+{	my ($self, %args) = @_;
+	my $sv = $self->serverVersion;
 
-    my %attrs;
-    if(exists $args{waitFlush})
-    {      if($sv ge '4.0')
-             { $self->removed("commit(waitFlush)"); delete $args{waitFlush} }
-        elsif($sv ge '1.4') { $self->deprecated("commit(waitFlush)") }
-        else { $attrs{waitFlush} = _to_bool delete $args{waitFlush} }
-    }
+	my %attrs;
+	if(exists $args{waitFlush})
+	{	  if($sv ge '4.0')
+			 { $self->removed("commit(waitFlush)"); delete $args{waitFlush} }
+		elsif($sv ge '1.4') { $self->deprecated("commit(waitFlush)") }
+		else { $attrs{waitFlush} = _to_bool delete $args{waitFlush} }
+	}
 
-    $attrs{waitSearcher} = _to_bool delete $args{waitSearcher}
-        if exists $args{waitSearcher};
+	$attrs{waitSearcher} = _to_bool delete $args{waitSearcher}
+		if exists $args{waitSearcher};
 
-    if(exists $args{softCommit})
-    {   if($sv lt '4.0') { $self->ignored("commit(softCommit)") }
-        else { $attrs{softCommit} = _to_bool delete $args{softCommit} }
-    }
+	if(exists $args{softCommit})
+	{	if($sv lt '4.0') { $self->ignored("commit(softCommit)") }
+		else { $attrs{softCommit} = _to_bool delete $args{softCommit} }
+	}
 
-    if(exists $args{expungeDeletes})
-    {   if($sv lt '1.4') { $self->ignored("commit(expungeDeletes)") }
-        else { $attrs{expungeDeletes} = _to_bool delete $args{expungeDeletes} }
-    }
+	if(exists $args{expungeDeletes})
+	{	if($sv lt '1.4') { $self->ignored("commit(expungeDeletes)") }
+		else { $attrs{expungeDeletes} = _to_bool delete $args{expungeDeletes} }
+	}
 
-    $self->_commit(\%attrs);
+	$self->_commit(\%attrs);
 }
 sub _commit($) {panic "not implemented"}
 
@@ -399,31 +397,30 @@ sub _commit($) {panic "not implemented"}
 =cut
 
 sub optimize(%)
-{   my ($self, %args) = @_;
-    my $sv = $self->serverVersion;
+{	my ($self, %args) = @_;
+	my $sv = $self->serverVersion;
 
-    my %attrs;
-    if(exists $args{waitFlush})
-    {      if($sv ge '4.0')
-             { $self->removed("commit(waitFlush)"); delete $args{waitFlush} }
-        elsif($sv ge '1.4') { $self->deprecated("optimize(waitFlush)") }
-        else { $attrs{waitFlush} = _to_bool delete $args{waitFlush} }
-    }
+	my %attrs;
+	if(exists $args{waitFlush})
+	{	if($sv ge '4.0') { $self->removed("commit(waitFlush)"); delete $args{waitFlush} }
+		elsif($sv ge '1.4') { $self->deprecated("optimize(waitFlush)") }
+		else { $attrs{waitFlush} = _to_bool delete $args{waitFlush} }
+	}
 
-    $attrs{waitSearcher} = _to_bool delete $args{waitSearcher}
-        if exists $args{waitSearcher};
+	$attrs{waitSearcher} = _to_bool delete $args{waitSearcher}
+		if exists $args{waitSearcher};
 
-    if(exists $args{softCommit})
-    {   if($sv lt '4.0') { $self->ignored("optimize(softCommit)") }
-        else { $attrs{softCommit} = _to_bool delete $args{softCommit} }
-    }
+	if(exists $args{softCommit})
+	{	if($sv lt '4.0') { $self->ignored("optimize(softCommit)") }
+		else { $attrs{softCommit} = _to_bool delete $args{softCommit} }
+	}
 
-    if(exists $args{maxSegments})
-    {   if($sv lt '1.3') { $self->ignored("optimize(maxSegments)") }
-        else { $attrs{maxSegments} = delete $args{maxSegments} }
-    }
+	if(exists $args{maxSegments})
+	{	if($sv lt '1.3') { $self->ignored("optimize(maxSegments)") }
+		else { $attrs{maxSegments} = delete $args{maxSegments} }
+	}
 
-    $self->_optimize(\%attrs);
+	$self->_optimize(\%attrs);
 }
 sub _optimize($) {panic "not implemented"}
 
@@ -453,40 +450,39 @@ the documents to be removed.
 =cut
 
 sub delete(%)
-{   my ($self, %args) = @_;
+{	my ($self, %args) = @_;
 
-    my %attrs;
-    $attrs{commit}
-      = _to_bool(exists $args{commit} ? $args{commit} : $self->autocommit);
+	my %attrs;
+	$attrs{commit} = _to_bool(exists $args{commit} ? $args{commit} : $self->autocommit);
 
-    if(exists $args{fromPending})
-    {   $self->deprecated("delete(fromPending)");
-        $attrs{fromPending}   = _to_bool delete $args{fromPending};
-    }
-    if(exists $args{fromCommitted})
-    {   $self->deprecated("delete(fromCommitted)");
-        $attrs{fromCommitted} = _to_bool delete $args{fromCommitted};
-    }
+	if(exists $args{fromPending})
+	{	$self->deprecated("delete(fromPending)");
+		$attrs{fromPending}   = _to_bool delete $args{fromPending};
+	}
+	if(exists $args{fromCommitted})
+	{	$self->deprecated("delete(fromCommitted)");
+		$attrs{fromCommitted} = _to_bool delete $args{fromCommitted};
+	}
 
-    my @which;
-    if(my $id = $args{id})
-    {    push @which, map +(id => $_), ref $id eq 'ARRAY' ? @$id : $id;
-    }
-    if(my $q  = $args{query})
-    {    push @which, map +(query => $_), ref $q  eq 'ARRAY' ? @$q  : $q;
-    }
-    @which or return;
+	my @which;
+	if(my $id = $args{id})
+	{	push @which, map +(id => $_), ref $id eq 'ARRAY' ? @$id : $id;
+	}
+	if(my $q  = $args{query})
+	{	push @which, map +(query => $_), ref $q  eq 'ARRAY' ? @$q  : $q;
+	}
+	@which or return;
 
-    # JSON calls do not accept multiple ids at once (it seems in 4.0)
-    my $result;
-    if($self->serverVersion ge '1.4' && !$self->isa('Apache::Solr::JSON'))
-    {   $result = $self->_delete(\%attrs, \@which);
-    }
-    else
-    {   # old servers accept only one id or query per delete
-        $result = $self->_delete(\%attrs, [splice @which, 0, 2]) while @which;
-    }
-    $result;
+	# JSON calls do not accept multiple ids at once (it seems in 4.0)
+	my $result;
+	if($self->serverVersion ge '1.4' && !$self->isa('Apache::Solr::JSON'))
+	{	$result = $self->_delete(\%attrs, \@which);
+	}
+	else
+	{	# old servers accept only one id or query per delete
+		$result = $self->_delete(\%attrs, [splice @which, 0, 2]) while @which;
+	}
+	$result;
 }
 sub _delete(@) {panic "not implemented"}
 
@@ -495,11 +491,11 @@ sub _delete(@) {panic "not implemented"}
 =cut
 
 sub rollback()
-{   my $self = shift;
-    $self->serverVersion ge '1.4'
-        or error __x"Rollback not supported by solr server";
+{	my $self = shift;
+	$self->serverVersion ge '1.4'
+		or error __x"Rollback not supported by solr server";
 
-    $self->_rollback;
+	$self->_rollback;
 }
 
 =method extractDocument %options
@@ -530,52 +526,51 @@ also specify the C<file> option with a filename.
 =default content_type <from> filename
 
 =example
-   my $r = $solr->extractDocument(file => 'design.pdf'
-     , literal_id => 'host');
+   my $r = $solr->extractDocument(file => 'design.pdf',
+       literal_id => 'host');
 =cut
 
 sub extractDocument(@)
-{   my $self  = shift;
+{	my $self  = shift;
 
-    $self->serverVersion ge '1.4'
-        or error __x"extractDocument() requires Solr v1.4 or higher";
-        
-    my %p     = $self->expandExtract(@_);
-    my $data;
+	$self->serverVersion ge '1.4'
+		or error __x"extractDocument() requires Solr v1.4 or higher";
+		
+	my %p   = $self->expandExtract(@_);
+	my $data;
 
-    # expand* changes '_' into '.'
-    my $ct    = delete $p{'content.type'};
-    my $fn    = delete $p{file};
-    $p{'resource.name'} ||= $fn if $fn && !ref $fn;
+	# expand* changes '_' into '.'
+	my $ct  = delete $p{'content.type'};
+	my $fn  = delete $p{file};
+	$p{'resource.name'} ||= $fn if $fn && !ref $fn;
 
-    $p{commit}  = _to_bool $self->autocommit
-        unless exists $p{commit};
+	$p{commit} = _to_bool $self->autocommit
+		unless exists $p{commit};
 
-    if(defined $p{string})
-    {   # try to avoid copying the data, which can be huge
-        $data = $ct =~ m!^text/!i
-              ? \encode(utf8 =>
-                (ref $p{string} eq 'SCALAR' ? ${$p{string}} : $p{string}))
-              : (ref $p{string} eq 'SCALAR' ? $p{string} : \$p{string} );
+	if(defined $p{string})
+	{	# try to avoid copying the data, which can be huge
+		$data = $ct =~ m!^text/!i
+		  ? \encode(utf8 => (ref $p{string} eq 'SCALAR' ? ${$p{string}} : $p{string}))
+		  : (ref $p{string} eq 'SCALAR' ? $p{string} : \$p{string} );
 
-        delete $p{string};
-    }
-    elsif($fn)
-    {   local $/;
-        if(ref $fn eq 'GLOB') { $data = \<$fn> }
-        else
-        {   local *IN;
-            open IN, '<:raw', $fn or fault __x"Cannot read document from {fn}", fn => $fn;
-            $data = \<IN>;
-            close IN or fault __x"Read error for document {fn}", fn => $fn;
-            $ct ||= $mimetypes->mimeTypeOf($fn);
-        }
-    }
-    else
-    {   error __x"Extract requires document as file or string";
-    }
+		delete $p{string};
+	}
+	elsif($fn)
+	{	local $/;
+		if(ref $fn eq 'GLOB') { $data = \<$fn> }
+		else
+		{	local *IN;
+			open IN, '<:raw', $fn or fault __x"Cannot read document from {fn}", fn => $fn;
+			$data = \<IN>;
+			close IN or fault __x"Read error for document {fn}", fn => $fn;
+			$ct ||= $mimetypes->mimeTypeOf($fn);
+		}
+	}
+	else
+	{	error __x"Extract requires document as file or string";
+	}
 
-    $self->_extract([%p], $data, $ct);
+	$self->_extract([%p], $data, $ct);
 }
 
 sub _extract($) { panic "not implemented" }
@@ -588,15 +583,15 @@ they are not very useful, it seems.
 =cut
 
 sub _core_admin($@)
-{   my ($self, $action, $params) = @_;
-    $params->{core} ||= $self->core;
-    
-    my $endpoint = $self->endpoint('cores', core => 'admin', params => $params);
-    my @params   = %$params;
-    my $result   = Apache::Solr::Result->new(params => [ %$params ], endpoint => $endpoint, core => $self);
+{	my ($self, $action, $params) = @_;
+	$params->{core} ||= $self->core;
+	
+	my $endpoint = $self->endpoint('cores', core => 'admin', params => $params);
+	my @params   = %$params;
+	my $result   = Apache::Solr::Result->new(params => [ %$params ], endpoint => $endpoint, core => $self);
 
-    $self->request($endpoint, $result);
-    $result;
+	$self->request($endpoint, $result);
+	$result;
 }
 
 =method coreStatus 
@@ -615,8 +610,8 @@ description about the exact structure and interpretation of this data.
 =cut
 
 sub coreStatus(%)
-{   my ($self, %args) = @_;
-    $self->_core_admin('STATUS', \%args);
+{	my ($self, %args) = @_;
+	$self->_core_admin('STATUS', \%args);
 }
 
 =method coreReload [$core]
@@ -634,8 +629,8 @@ the old core is unloaded.
 =cut
 
 sub coreReload(%)
-{   my ($self, %args) = @_;
-    $self->_core_admin('RELOAD', \%args);
+{	my ($self, %args) = @_;
+	$self->_core_admin('RELOAD', \%args);
 }
 
 =method coreUnload %options
@@ -646,8 +641,8 @@ Removes a core from Solr. Active requests will continue to be processed, but no 
 =cut
 
 sub coreUnload($%)
-{   my ($self, %args) = @_;
-    $self->_core_admin('UNLOAD', \%args);
+{	my ($self, %args) = @_;
+	$self->_core_admin('UNLOAD', \%args);
 }
 
 #--------------------------
@@ -669,39 +664,39 @@ General rules:
 =cut
 
 sub _calling_sub()
-{   for(my $i=0;$i <10; $i++)
-    {   my $sub = (caller $i)[3];
-        return $sub if !$sub || index($sub, 'Apache::Solr::') < 0;
-    }
+{	for(my $i=0;$i <10; $i++)
+	{	my $sub = (caller $i)[3];
+		return $sub if !$sub || index($sub, 'Apache::Solr::') < 0;
+	}
 }
 
 sub _simpleExpand($$$)
-{   my ($self, $p, $prefix) = @_;
-    my @p  = ref $p eq 'HASH' ? %$p : @$p;
-    my $sv = $self->serverVersion;
+{	my ($self, $p, $prefix) = @_;
+	my @p  = ref $p eq 'HASH' ? %$p : @$p;
+	my $sv = $self->serverVersion;
 
-    my @t;
-    while(@p)
-    {   my ($k, $v) = (shift @p, shift @p);
-        $k =~ s/_/./g;
-        $k = $prefix.$k if defined $prefix && index($k, $prefix)!=0;
-        my $param   = $k =~ m/^f\.[^\.]+\.(.*)/ ? $1 : $k;
+	my @t;
+	while(@p)
+	{	my ($k, $v) = (shift @p, shift @p);
+		$k =~ s/_/./g;
+		$k = $prefix.$k if defined $prefix && index($k, $prefix)!=0;
+		my $param   = $k =~ m/^f\.[^\.]+\.(.*)/ ? $1 : $k;
 
-        my ($dv, $iv);
-        if(($dv = $deprecated{$param}) && $sv ge $dv)
-        {   my $command = _calling_sub;
-            $self->deprecated("$command($param) since $dv");
-        }
-        elsif(($iv = $introduced{$param}) && $iv gt $sv)
-        {   my $command = _calling_sub;
-            $self->ignored("$command($param) introduced in $iv");
-            next;
-        }
+		my ($dv, $iv);
+		if(($dv = $deprecated{$param}) && $sv ge $dv)
+		{	my $command = _calling_sub;
+			$self->deprecated("$command($param) since $dv");
+		}
+		elsif(($iv = $introduced{$param}) && $iv gt $sv)
+		{	my $command = _calling_sub;
+			$self->ignored("$command($param) introduced in $iv");
+			next;
+		}
 
-        push @t, $k => $boolparams{$param} ? _to_bool($_) : $_
-            for ref $v eq 'ARRAY' ? @$v : $v;
-    }
-    @t;
+		push @t, $k => $boolparams{$param} ? _to_bool($_) : $_
+			for ref $v eq 'ARRAY' ? @$v : $v;
+	}
+	@t;
 }
 
 =method expandTerms PAIRS|ARRAY
@@ -714,10 +709,10 @@ Used by M<queryTerms()> only.
 =cut
 
 sub expandTerms(@)
-{   my $self = shift;
-    my $p    = @_==1 ? shift : [@_];
-    my @t    = $self->_simpleExpand($p, 'terms.');
-    wantarray ? @t : \@t;
+{	my $self = shift;
+	my $p = @_==1 ? shift : [@_];
+	my @t = $self->_simpleExpand($p, 'terms.');
+	wantarray ? @t : \@t;
 }
 
 =method expandExtract PAIRS|ARRAY
@@ -733,40 +728,39 @@ HASH (or ARRAY-of-PAIRS).  [0.97] the value in each PAIR may be a SCALAR
 (ref string) which circumvents some copying.
 
 =example
-  my $result = $solr->extractDocument(string => $document
-     , resource_name => $fn, extractOnly => 1
-     , literals => { id => 5, b => 'tic' }, literal_xyz => 42
-     , fmap => { id => 'doc_id' }, fmap_subject => 'mysubject'
-     , boost => { abc => 3.5 }, boost_xyz => 2.0);
-);
-
+  my $result = $solr->extractDocument(string => $document,
+      resource_name => $fn, extractOnly => 1,
+      literals => { id => 5, b => 'tic' }, literal_xyz => 42,
+      fmap => { id => 'doc_id' }, fmap_subject => 'mysubject',
+      boost => { abc => 3.5 }, boost_xyz => 2.0
+  );
 =cut
 
 sub _expand_flatten($$)
-{   my ($self, $v, $prefix) = @_;
-    my @l = ref $v eq 'HASH' ? %$v : @$v;
-    my @s;
-    push @s, $prefix.(shift @l) => (shift @l) while @l;
-    @s;
+{	my ($self, $v, $prefix) = @_;
+	my @l = ref $v eq 'HASH' ? %$v : @$v;
+	my @s;
+	push @s, $prefix.(shift @l) => (shift @l) while @l;
+	@s;
 }
 
 sub expandExtract(@)
-{   my $self = shift;
-    my @p = @_==1 ? @{(shift)} : @_;
-    my @s;
-    while(@p)
-    {   my ($k, $v) = (shift @p, shift @p);
-        if(!ref $v || ref $v eq 'SCALAR')
-             { push @s, $k => $v }
-        elsif($k eq 'literal' || $k eq 'literals')
-             { push @s, $self->_expand_flatten($v, 'literal.') }
-        elsif($k eq 'fmap' || $k eq 'boost' || $k eq 'resource')
-             { push @s, $self->_expand_flatten($v, "$k.") }
-        else { panic "unknown set '$k'" }
-    }
+{	my $self = shift;
+	my @p = @_==1 ? @{(shift)} : @_;
+	my @s;
+	while(@p)
+	{	my ($k, $v) = (shift @p, shift @p);
+		if(!ref $v || ref $v eq 'SCALAR')
+			 { push @s, $k => $v }
+		elsif($k eq 'literal' || $k eq 'literals')
+			 { push @s, $self->_expand_flatten($v, 'literal.') }
+		elsif($k eq 'fmap' || $k eq 'boost' || $k eq 'resource')
+			 { push @s, $self->_expand_flatten($v, "$k.") }
+		else { panic "unknown set '$k'" }
+	}
 
-    my @t = @s ? $self->_simpleExpand(\@s) : ();
-    wantarray ? @t : \@t;
+	my @t = @s ? $self->_simpleExpand(\@s) : ();
+	wantarray ? @t : \@t;
 }
 
 =method expandSelect PAIRS
@@ -789,15 +783,15 @@ by the backend abbreviation.
 You may use M<WebService::Solr::Query> to construct the query ('q').
 
 =examples
-  my @r = $solr->expandSelect
-    ( q => 'inStock:true', rows => 10
-    , facet => {limit => -1, field => [qw/cat inStock/], mincount => 1}
-    , f_cat_facet => {missing => 1}
-    , hl    => {}
-    , mlt   => { fl => 'manu,cat', mindf => 1, mintf => 1 }
-    , stats => { field => [ 'price', 'popularity' ] }
-    , group => { query => 'price:[0 TO 99.99]', limit => 3 }
-    );
+  my @r = $solr->expandSelect(
+      q => 'inStock:true', rows => 10,
+      facet => {limit => -1, field => [qw/cat inStock/], mincount => 1},
+      f_cat_facet => {missing => 1},
+      hl    => {},
+      mlt   => { fl => 'manu,cat', mindf => 1, mintf => 1 },
+      stats => { field => [ 'price', 'popularity' ] },
+      group => { query => 'price:[0 TO 99.99]', limit => 3 },
+  );
 
   # becomes (one line)
   ...?rows=10&q=inStock:true
@@ -822,41 +816,41 @@ my %sets =   #also-per-field?
   );
  
 sub expandSelect(@)
-{   my $self = shift;
-    my @s;
-    my (@flat, %seen_set);
-    while(@_)
-    {   my ($k, $v) = (shift, shift);
-        $k =~ s/_/./g;
-        my @p = split /\./, $k;
+{	my $self = shift;
+	my @s;
+	my (@flat, %seen_set);
+	while(@_)
+	{	my ($k, $v) = (shift, shift);
+		$k =~ s/_/./g;
+		my @p = split /\./, $k;
 
-        # fields are $set.$more or f.$field.$set.$more
-        my $per_field    = $p[0] eq 'f' && @p > 2;
-        my ($set, $more) = $per_field ? @p[2,3] : @p[0,1];
+		# fields are $set.$more or f.$field.$set.$more
+		my $per_field    = $p[0] eq 'f' && @p > 2;
+		my ($set, $more) = $per_field ? @p[2,3] : @p[0,1];
 
-        if(my $def = $sets{$set})
-        {   $seen_set{$set} = 1;
-            !$per_field || $def->[0]
-               or error __x"Set {set} cannot be used per field, in {field}", set => $set, field => $k;
+		if(my $def = $sets{$set})
+		{	$seen_set{$set} = 1;
+			!$per_field || $def->[0]
+			   or error __x"Set {set} cannot be used per field, in {field}", set => $set, field => $k;
 
-            if(ref $v eq 'HASH')
-            {   !$more or error __x"Field {field} is not simple for a set", field => $k;
-                push @s, $self->_simpleExpand($v, "$k.");
-            }
-            elsif($more)    # skip $set=true for now
-            {   push @flat, $k => $v;
-            }
-        }
-        elsif(ref $v eq 'HASH')
-        {   error __x"Unknown set {set}", set => $set;
-        }
-        else
-        {   push @flat, $k => $v;
-        }
-    }
-    push @flat, %seen_set;
-    unshift @s, $self->_simpleExpand(\@flat);
-    wantarray ? @s : \@s;
+			if(ref $v eq 'HASH')
+			{	!$more or error __x"Field {field} is not simple for a set", field => $k;
+				push @s, $self->_simpleExpand($v, "$k.");
+			}
+			elsif($more)    # skip $set=true for now
+			{	push @flat, $k => $v;
+			}
+		}
+		elsif(ref $v eq 'HASH')
+		{	error __x"Unknown set {set}", set => $set;
+		}
+		else
+		{	push @flat, $k => $v;
+		}
+	}
+	push @flat, %seen_set;
+	unshift @s, $self->_simpleExpand(\@flat);
+	wantarray ? @s : \@s;
 }
 
 =method deprecated $message
@@ -865,9 +859,9 @@ indicated server version.
 =cut
 
 sub deprecated($)
-{   my ($self, $msg) = @_;
-    return if $self->{AS_depr_msg}{$msg}++;  # report only once
-    warning __x"Deprecated solr {message}", message => $msg;
+{	my ($self, $msg) = @_;
+	return if $self->{AS_depr_msg}{$msg}++;  # report only once
+	warning __x"Deprecated solr {message}", message => $msg;
 }
 
 =method ignored $message
@@ -876,9 +870,9 @@ because they were not yet supported by the indicated server version.
 =cut
 
 sub ignored($)
-{   my ($self, $msg) = @_;
-    return if $self->{AS_ign_msg}{$msg}++;  # report only once
-    warning __x"Ignored solr {message}", message => $msg;
+{	my ($self, $msg) = @_;
+	return if $self->{AS_ign_msg}{$msg}++;  # report only once
+	warning __x"Ignored solr {message}", message => $msg;
 }
 
 =method removed $message
@@ -887,9 +881,9 @@ because they were removed from the indicated server version.
 =cut
 
 sub removed($)
-{   my ($self, $msg) = @_;
-    return if $self->{AS_rem_msg}{$msg}++;  # report only once
-    warning __x"Removed solr {message}", message => $msg;
+{	my ($self, $msg) = @_;
+	return if $self->{AS_rem_msg}{$msg}++;  # report only once
+	warning __x"Removed solr {message}", message => $msg;
 }
 
 
@@ -910,26 +904,26 @@ is passed; you never know for a HASH.
 =cut
 
 sub endpoint($@)
-{   my ($self, $action, %args) = @_;
-    my $core = $args{core} || $self->core;
-    my $take = $self->server->clone;    # URI
-    $take->path($take->path . (defined $core ? "/$core" : '') . "/$action");
+{	my ($self, $action, %args) = @_;
+	my $core = $args{core} || $self->core;
+	my $take = $self->server->clone;    # URI
+	$take->path($take->path . (defined $core ? "/$core" : '') . "/$action");
 
-    # make parameters ordered
-    my $params = $args{params} || [];
-    $params    = [ %$params ] if ref $params eq 'HASH';
-    @$params or return $take;
+	# make parameters ordered
+	my $params = $args{params} || [];
+	$params	= [ %$params ] if ref $params eq 'HASH';
+	@$params or return $take;
 
-    # remove paramers with undefined value
-    my @p = @$params;
-    my @params;
-    while(@p)
-    {   push @params, $p[0] => $p[1] if defined $p[1];
-        shift @p, shift @p;
-    }
+	# remove paramers with undefined value
+	my @p = @$params;
+	my @params;
+	while(@p)
+	{	push @params, $p[0] => $p[1] if defined $p[1];
+		shift @p, shift @p;
+	}
 
-    $take->query_form(@params) if @params;
-    $take;
+	$take->query_form(@params) if @params;
+	$take;
 }
 
 =method request $url, $result, $body, $ct
@@ -941,57 +935,59 @@ content-type C<$ct> must match the body bytes.
 =cut
 
 sub request($$;$$)
-{   my ($self, $url, $result, $body, $body_ct) = @_;
+{	my ($self, $url, $result, $body, $body_ct) = @_;
 
-    my $req;
-    if($body)
-    {   # request with 'form' payload
-        $req       = HTTP::Request->new
-          ( POST => $url
-          , [ Content_Type        => $body_ct
-            , Content_Disposition => 'form-data; name="content"'
-            ]
-          , (ref $body eq 'SCALAR' ? $$body : $body)
-          );
-    }
-    else
-    {   # request without payload
-        $req = HTTP::Request->new(GET => $url);
-    }
+	my $req;
+	if($body)
+	{	# request with 'form' payload
+		$req       = HTTP::Request->new
+		  ( POST => $url
+		  , [ Content_Type        => $body_ct
+			, Content_Disposition => 'form-data; name="content"'
+			]
+		  , (ref $body eq 'SCALAR' ? $$body : $body)
+		  );
+	}
+	else
+	{	# request without payload
+		$req = HTTP::Request->new(GET => $url);
+	}
 
-    $result->request($req);
+	$result->request($req);
 
-    my $resp;
-    my $retries = $self->{AS_retry_max};
-    my $wait    = $self->{AS_retry_wait};
-    my $start   = time;
+	my $resp;
+	my $retries = $self->{AS_retry_max};
+	my $wait    = $self->{AS_retry_wait};
+	my $start   = time;
 
-    while($retries--)
-    {   $resp = $self->agent->request($req);
-    	$result->response($resp);
-		$result->decoded($self->decodeResponse($resp));
+	while($retries--)
+	{	$resp = $self->agent->request($req);
+		$result->response($resp);
+warn $req->as_string;
+warn $resp->as_string;
+		my $dec = $result->decoded($self->decodeResponse($resp));
 
-        last if $resp->is_success;
+		last if $resp->is_success;
 
-        if($resp->code != 500)
-        {   alert "Solr request failed with ".$resp->code;
-            last;
-        }
+		if($resp->code==500)
+		{	$! = ENETDOWN;  # HTTP(500) -> unix error
+			alert __x"Solr request failed with {code}, {retries} retries left",
+			code => $resp->code, retries => $retries, result => $result;
+			sleep $wait if $wait && $retries;    # let remote settle a bit
+			next;
+		}
 
-        $! = ENETDOWN;  # HTTP(500) -> unix error
-        alert __x"Solr request failed with {code}, {retries} retries left",
-            code => $resp->code, retries => $retries, result => $result;
+		error __x"Solr request failed with: {err}",
+			err => ($result->solrError || $result->httpError), result => $result;
+	}
 
-        sleep $wait if $wait && $retries;    # let remote settle a bit
-    }
+	unless($resp->is_success)
+	{	$! = $resp->code==500 ? ENETDOWN : ENETUNREACH;
+		fault __x"Solr request failed after {elapse} seconds after {retries} retries",
+			elapse => time - $start, retries => $self->{AS_retry_max} - $retries -1, result => $result;
+	}
 
-    unless($resp->is_success)
-    {   $! = $resp->code==500 ? ENETDOWN : ENETUNREACH;
-        fault __x"Solr request failed after {elapse} seconds after {retries} retries",
-            elapse => time - $start, retries => $self->{AS_retry_max} - $retries -1, result => $result;
-    }
-
-    $resp;
+	$resp;
 }
 
 sub decodeResponse($) { undef }

@@ -11,6 +11,7 @@ version 1.11:
 
 	Improvements:
 	- error results also get parsed.
+	- from blanks to tabs in the source.
 
 version 1.10: Fri 18 Apr 16:52:35 CEST 2025
 
