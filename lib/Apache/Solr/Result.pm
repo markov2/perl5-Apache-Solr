@@ -66,7 +66,10 @@ use overload
 =option  response M<HTTP::Response> object
 =default response C<undef>
 
-=requires params   ARRAY
+=option  params   ARRAY|HASH
+=default params   []
+The parameters used for the query.  [1.11] not required anymore.
+
 =requires endpoint URI
 
 =option  core M<Apache::Solr> object
@@ -87,11 +90,12 @@ of a repeat of a message exchange between this client and the database.
 sub new(@) { my $c = shift; (bless {}, $c)->init({@_}) }
 sub init($)
 {	my ($self, $args) = @_;
-	my $p = $self->{ASR_params} = $args->{params} or panic;
-	$self->{ASR_endpoint} = $args->{endpoint}     or panic;
 
-	my %params            = @$p;
+	my $p = $args->{params} || [];
+	($p, my $params)      = ref $p eq 'HASH' ? ( +[%$p], $p ) : ($p, +{@p});
+	$self->{ASR_params}   = $p;
 
+	$self->{ASR_endpoint} = $args->{endpoint} or panic;
 	$self->{ASR_start}    = time;
 	$self->request($args->{request});
 	$self->response($args->{response});
@@ -99,11 +103,10 @@ sub init($)
 	$self->{ASR_pages}    = [ $self ];   # first has non-weak page-table
 	weaken $self->{ASR_pages}[0];        # no reference loop!
 
-	if($self->{ASR_core} = $args->{core}) { weaken $self->{ASR_core} }
-	$self->{ASR_next}    = $params{start} || 0;
-	$self->{ASR_seq}     = $args->{sequential} || 0;
-	$self->{ASR_fpz}     = $args->{_fpz};
-
+	if($self->{ASR_core}  = $args->{core}) { weaken $self->{ASR_core} }
+	$self->{ASR_next}     = $params->{start} || 0;
+	$self->{ASR_seq}      = $args->{sequential} || 0;
+	$self->{ASR_fpz}      = $args->{_fpz};
 	$self;
 }
 
