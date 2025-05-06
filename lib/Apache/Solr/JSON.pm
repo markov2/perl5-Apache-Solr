@@ -205,20 +205,17 @@ sub request($$;$$)
 	# https://solr.apache.org/guide/6_6/uploading-data-with-index-handlers.html#UploadingDatawithIndexHandlers-JSONUpdateConveniencePaths
 	$url =~ s!/update\?!/update/json?!;
 
-	my $resp = $self->SUPER::request($url, $result, $body, $body_ct);
-	my $ct   = $resp->content_type;
+	$self->SUPER::request($url, $result, $body, $body_ct);
+}
+
+sub decodeResponse($)
+{	my ($self, $resp) = @_;
 
 	# At least until Solr 4.0 response ct=text/plain while producing JSON
-	# $ct =~ m/json/i
-	#     or error __x"Answer from solr server is not json but {type}", type => $ct;
+	$resp->content_type =~ m/json/i
+		or error __x"Answer from solr server is not json but {type}", type => $ct;
 
-#warn $resp->decoded_content;
-	my $dec = $self->json->decode($resp->decoded_content || $resp->content);
-
-#use Data::Dumper;
-#warn Dumper $dec;
-	$result->decoded($dec);
-	$result;
+	$self->json->decode($resp->decoded_content || $resp->content);
 }
 
 =method simpleUpdate $command, $attributes, [$content]

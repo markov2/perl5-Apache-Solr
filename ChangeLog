@@ -8,11 +8,11 @@ version 1.11:
 
 	Changes:
 	- replace http_response from 1.10 by 'result'.
-dit is een test
 
 	Improvements:
 	- error results also get parsed.
 	- from blanks to tabs in the source.
+	- correctly decode JSON communication.
 
 version 1.10: Fri 18 Apr 16:52:35 CEST 2025
 
