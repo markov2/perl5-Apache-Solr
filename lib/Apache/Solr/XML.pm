@@ -179,7 +179,6 @@ sub decodeResponse($)
 		parseropts => { huge => 1 },
 	);
 
-#warn Dumper $dec;
 	_cleanup_parsed $dec;
 }
 

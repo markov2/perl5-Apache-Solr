@@ -774,7 +774,7 @@ by the backend abbreviation.
 =item * expand
 =item * facet -> F<http://wiki.apache.org/solr/SimpleFacetParameters>
 =item * hl (highlight) -> F<http://wiki.apache.org/solr/HighlightingParameters>
-=item * mtl -> F<https://solr.apache.org/guide/8_11/morelikethis.html>
+=item * mlt -> F<https://solr.apache.org/guide/8_11/morelikethis.html>
 =item * stats -> F<http://wiki.apache.org/solr/StatsComponent>
 =item * suggest -> F<https://solr.apache.org/guide/8_11/suggester.html>
 =item * group -> F<http://wiki.apache.org/solr/FieldCollapsing>
@@ -963,11 +963,6 @@ sub request($$;$$)
 	while($retries--)
 	{	$resp = $self->agent->request($req);
 		$result->response($resp);
-#warn $req->as_string;
-#warn $resp->as_string;
-#use Data::Dumper;
-#warn Dumper $self->decodeResponse($resp);
-
 		my $dec = $result->decoded($self->decodeResponse($resp));
 
 		last if $resp->is_success;
