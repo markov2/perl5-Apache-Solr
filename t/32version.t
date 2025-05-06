@@ -26,11 +26,8 @@ my $solr = Apache::Solr::JSON->new
 
 my $self = $solr;
 {
-    my $params = {};
-    my $endpoint = $self->endpoint('info/system', core => 'admin', params => $params);
-
-    my @params   = %$params;
-    my $result   = Apache::Solr::Result->new(params => [ %$params ], endpoint => $endpoint, core => $self);
+    my $endpoint = $self->endpoint('info/system', core => 'admin');
+    my $result   = Apache::Solr::Result->new(endpoint => $endpoint, core => $self);
 
     $self->request($endpoint, $result);
 	ok $result->success, 'got system info';

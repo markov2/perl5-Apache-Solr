@@ -963,8 +963,11 @@ sub request($$;$$)
 	while($retries--)
 	{	$resp = $self->agent->request($req);
 		$result->response($resp);
-warn $req->as_string;
-warn $resp->as_string;
+#warn $req->as_string;
+#warn $resp->as_string;
+#use Data::Dumper;
+#warn Dumper $self->decodeResponse($resp);
+
 		my $dec = $result->decoded($self->decodeResponse($resp));
 
 		last if $resp->is_success;

@@ -72,24 +72,16 @@ sub xmlsimple() {shift->{ASX_simple}}
 
 sub _select($$)
 {	my ($self, $args, $params) = @_;
-	my @params   = @$params;
-
-	# select can be called automatically, more than once.  We do not
-	# want to add 'wt' each call.
-	my %params   = @params;
-	unshift @params, wt => 'xml' unless $params{wt};
-
-	my $endpoint = $self->endpoint('select', params => \@params);
-	my $result   = Apache::Solr::Result->new(%$args, params => \@params, endpoint => $endpoint, core => $self);
+	my $endpoint = $self->endpoint('select', params => $params);
+	my $result   = Apache::Solr::Result->new(%$args, params => $params, endpoint => $endpoint, core => $self);
 	$self->request($endpoint, $result);
 	$result;
 }
 
 sub _extract($$$)
 {	my ($self, $params, $data, $ct) = @_;
-	my @params   = (wt => 'xml', @$params);
-	my $endpoint = $self->endpoint('update/extract', params => \@params);
-	my $result   = Apache::Solr::Result->new(params => \@params, endpoint => $endpoint, core => $self);
+	my $endpoint = $self->endpoint('update/extract', params => $params);
+	my $result   = Apache::Solr::Result->new(params => $params, endpoint => $endpoint, core => $self);
 	$self->request($endpoint, $result, $data, $ct);
 	$result;
 }
@@ -97,7 +89,7 @@ sub _extract($$$)
 sub _add($$$)
 {	my ($self, $docs, $attrs, $params) = @_;
 	$attrs  ||= {};
-	$params ||= {};
+	$params ||= [];
 
 	my $doc   = XML::LibXML::Document->new('1.0', 'UTF-8');
 	my $add   = $doc->createElement('add');
@@ -108,9 +100,8 @@ sub _add($$$)
 
 	$doc->setDocumentElement($add);
 
-	my @params   = (wt => 'xml', %$params);
-	my $endpoint = $self->endpoint('update', params => \@params);
-	my $result   = Apache::Solr::Result->new(params => \@params, endpoint => $endpoint, core => $self);
+	my $endpoint = $self->endpoint('update', params => $params);
+	my $result   = Apache::Solr::Result->new(params => $params, endpoint => $endpoint, core => $self);
 	$self->request($endpoint, $result, $doc);
 	$result;
 }
@@ -146,10 +137,8 @@ sub _rollback()  { shift->simpleUpdate('rollback') }
 
 sub _terms($)
 {	my ($self, $terms) = @_;
-
-	my @params   = (wt => 'xml', @$terms);
-	my $endpoint = $self->endpoint('terms', params => \@params);
-	my $result   = Apache::Solr::Result->new(params => \@params, endpoint => $endpoint, core => $self);
+	my $endpoint = $self->endpoint('terms', params => $terms);
+	my $result   = Apache::Solr::Result->new(params => $terms, endpoint => $endpoint, core => $self);
 
 	$self->request($endpoint, $result);
 
@@ -252,9 +241,9 @@ sub _cleanup_parsed($)
 sub simpleUpdate($$;$)
 {	my ($self, $command, $attrs, $content) = @_;
 	$attrs     ||= {};
-	my @params   = (wt => 'xml', commit => delete $attrs->{commit});
-	my $endpoint = $self->endpoint('update', params => \@params);
-	my $result   = Apache::Solr::Result->new(params => \@params, endpoint => $endpoint, core => $self);
+	my $params   = [ commit => delete $attrs->{commit} ];
+	my $endpoint = $self->endpoint('update', params => $params);
+	my $result   = Apache::Solr::Result->new(params => $params, endpoint => $endpoint, core => $self);
 	my $doc      = $self->simpleDocument($command, $attrs, $content);
 	$self->request($endpoint, $result, $doc);
 	$result;
@@ -289,6 +278,16 @@ sub simpleDocument($;$$)
 	{	$top->appendText($content);
 	}
 	$doc;
+}
+
+sub endpoint($@)
+{	my ($self, $action, %args) = @_;
+	my $params = $args{params} ||= [];
+
+	if(ref $params eq 'HASH') { $params->{wt} ||= 'xml' }
+	else { $args{params} = [ wt => 'xml', @$params ] }
+
+    $self->SUPER::endpoint($action => %args);
 }
 
 1;

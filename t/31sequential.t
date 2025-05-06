@@ -15,6 +15,8 @@ $Data::Dumper::Quotekeys = 0;
 BEGIN {
     $server = $ENV{SOLR_TEST_SERVER}
         or plan skip_all => "no SOLR_TEST_SERVER provided";
+
+	$server .= '/markov';
 }
 
 my $rows_per_page = 7;

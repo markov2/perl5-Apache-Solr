@@ -14,6 +14,8 @@ version 1.11:
 	- from blanks to tabs in the source.
 	- correctly decode JSON communication.
 	- ::Result::new(params) optional and can be HASH
+	- t/31sequential.t was not distributed.
+	- simplify param handling wrt the 'wt' parameter.
 
 version 1.10: Fri 18 Apr 16:52:35 CEST 2025
 

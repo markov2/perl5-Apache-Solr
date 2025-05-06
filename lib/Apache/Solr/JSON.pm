@@ -76,12 +76,8 @@ sub _select($$)
 
 	# select may be called more than once, but do not add wt each time
 	# again.
-	my @params   = @$params;
-	my %params   = @params;
-	unshift @params, wt => 'json';
-
-	my $endpoint = $self->endpoint('select', params => \@params);
-	my $result   = Apache::Solr::Result->new(%$args, params => \@params, endpoint => $endpoint, core => $self);
+	my $endpoint = $self->endpoint('select', params => $params);
+	my $result   = Apache::Solr::Result->new(%$args, params => $params, endpoint => $endpoint, core => $self);
 	$self->request($endpoint, $result);
 
 	if(my $dec = $result->decoded)
@@ -94,9 +90,8 @@ sub _select($$)
 
 sub _extract($$$)
 {	my ($self, $params, $data, $ct) = @_;
-	my @params   = (wt => 'json', @$params);
-	my $endpoint = $self->endpoint('update/extract', params => \@params);
-	my $result   = Apache::Solr::Result->new(params => \@params, endpoint => $endpoint, core => $self);
+	my $endpoint = $self->endpoint('update/extract', params => $params);
+	my $result   = Apache::Solr::Result->new(params => $params, endpoint => $endpoint, core => $self);
 	$self->request($endpoint, $result, $data, $ct);
 	$result;
 }
@@ -104,32 +99,34 @@ sub _extract($$$)
 sub _add($$$)
 {	my ($self, $docs, $attrs, $params) = @_;
 	$attrs   ||= {};
-	$params  ||= {};
+	$params  ||= [];
 
 	my $sv = $self->serverVersion;
 	$sv ge '3.1' or error __x"Solr version too old for updates in JSON syntax";
-
-	my @params   = (wt => 'json', %$params);
-	my $endpoint = $self->endpoint(($sv lt '4.0' ? 'update/json' : 'update'), params => \@params);
-	my $result   = Apache::Solr::Result->new(params => \@params, endpoint => $endpoint, core => $self);
 
 	# We cannot create HASHes with twice the same key in Perl, so cannot
 	# produce the syntax for adding multiple documents.  Try to save it.
 	delete $attrs->{boost}
 		if $attrs->{boost} && $attrs->{boost}==1.0;
 
+	$params = +{ @$params } if ref $params eq 'ARRAY';
 	exists $attrs->{$_} && ($params->{$_} = delete $attrs->{$_})
 		for qw/commit commitWithin overwrite boost/;
 
+	my $endpoint = $self->endpoint(($sv lt '4.0' ? 'update/json' : 'update'), params => $params);
+	my $result   = Apache::Solr::Result->new(params => $params, endpoint => $endpoint, core => $self);
+
 	my $add;
 	if(@$docs==1)
-	{	$add = {add => {%$attrs, doc => $self->_doc2json($docs->[0])}} }
+	{	$add = +{ add => +{ %$attrs, doc => $self->_doc2json($docs->[0]) } }
+	}
 	elsif(keys %$attrs)
 	{	# in combination with attributes only
 		error __x"Unable to add more than one doc with JSON interface";
 	}
 	else
-	{	$add = [ map $self->_doc2json($_), @$docs ] }
+	{	$add = [ map $self->_doc2json($_), @$docs ];
+	}
 
 	$self->request($endpoint, $result, $add);
 	$result;
@@ -168,10 +165,8 @@ sub _rollback()  { shift->simpleUpdate('rollback') }
 
 sub _terms($)
 {	my ($self, $terms) = @_;
-
-	my @params   = (wt => 'json', @$terms);
-	my $endpoint = $self->endpoint('terms', params => \@params);
-	my $result   = Apache::Solr::Result->new(params => \@params, endpoint => $endpoint, core => $self);
+	my $endpoint = $self->endpoint('terms', params => $terms);
+	my $result   = Apache::Solr::Result->new(params => $terms, endpoint => $endpoint, core => $self);
 	$self->request($endpoint, $result);
 
 	my $table = $result->decoded->{terms} || {};
@@ -212,7 +207,8 @@ sub decodeResponse($)
 {	my ($self, $resp) = @_;
 
 	# At least until Solr 4.0 response ct=text/plain while producing JSON
-	$resp->content_type =~ m/json/i
+	my $ct = $resp->content_type;
+	$ct =~ m/json/i
 		or error __x"Answer from solr server is not json but {type}", type => $ct;
 
 	$self->json->decode($resp->decoded_content || $resp->content);
@@ -227,9 +223,9 @@ sub simpleUpdate($$;$)
 	$sv ge '3.1' or error __x"Solr version too old for updates in JSON syntax";
 
 	$attrs     ||= {};
-	my @params   = (wt => 'json', commit => delete $attrs->{commit});
-	my $endpoint = $self->endpoint(($sv lt '4.0' ? 'update/json' : 'update'), params => \@params);
-	my $result = Apache::Solr::Result->new(params => \@params, endpoint => $endpoint, core => $self);
+	my $params   = [ commit => delete $attrs->{commit} ];
+	my $endpoint = $self->endpoint(($sv lt '4.0' ? 'update/json' : 'update'), params => $params);
+	my $result = Apache::Solr::Result->new(params => $params, endpoint => $endpoint, core => $self);
 	my %params = (%$attrs, (!$content ? () : ref $content eq 'HASH' ? %$content : @$content));
 	my $doc    = $self->simpleDocument($command, \%params);
 	$self->request($endpoint, $result, $doc);
@@ -245,6 +241,16 @@ sub simpleDocument($;$$)
 	$attrs   ||= {};
 	$content ||= {};
 	+{ $command => { %$attrs, %$content } }
+}
+
+sub endpoint($@)
+{	my ($self, $action, %args) = @_;
+	my $params = $args{params} ||= [];
+
+	if(ref $params eq 'HASH') { $params->{wt} ||= 'json' }
+	else { $args{params} = [ wt => 'json', @$params ] }
+
+	$self->SUPER::endpoint($action, %args);
 }
 
 1;
