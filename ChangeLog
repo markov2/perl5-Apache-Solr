@@ -8,6 +8,7 @@ version 1.11:
 
 	Changes:
 	- replace http_response from 1.10 by 'result'.
+dit is een test
 
 	Improvements:
 	- error results also get parsed.
