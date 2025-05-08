@@ -92,7 +92,7 @@ sub init($)
 {	my ($self, $args) = @_;
 
 	my $p = $args->{params} || [];
-	($p, my $params)      = ref $p eq 'HASH' ? ( +[%$p], $p ) : ($p, +{@p});
+	($p, my $params)      = ref $p eq 'HASH' ? ( +[%$p], $p ) : ($p, +{@$p});
 	$self->{ASR_params}   = $p;
 
 	$self->{ASR_endpoint} = $args->{endpoint} or panic;
