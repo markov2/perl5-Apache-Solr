@@ -4,7 +4,9 @@
 All modifications are made by Mark Overmeer, unless explicitly stated
 differently.
 
-version 1.11!  Thu  8 May 11:48:43 CEST 2025
+version 1.12:
+
+version 1.11: Thu  8 May 11:48:43 CEST 2025
 
 	Changes:
 	- replace http_response from 1.10 by 'result'.
